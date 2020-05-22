@@ -1,4 +1,4 @@
-from typing import Optional, Awaitable, Dict, Any
+from typing import Optional, Awaitable, Dict, Any, Tuple
 import base64
 from fastapi import FastAPI, Response
 from pydantic import BaseModel
@@ -7,19 +7,7 @@ import databases
 import hashlib
 import filetype  # type: ignore
 import datetime
-
-
-def now() -> int:
-    return int(datetime.datetime.now().replace(tzinfo=datetime.timezone.utc).timestamp() * 1000) 
-
-
-DATABASE_URL = "sqlite:///./test.db"
-database = databases.Database(DATABASE_URL)
-
-SETUP_QUERIES = [
-    """CREATE TABLE IF NOT EXISTS cas (hash BLOB(8) PRIMARY KEY, data BLOB) """,
-    """CREATE TABLE IF NOT EXISTS vsn (entity TEXT, vsn INTEGER, pointer BLOB(8), PRIMARY KEY (entity, vsn))"""
-]
+import model
 
 
 def hs(data):
@@ -27,6 +15,11 @@ def hs(data):
     h.update(data)
     d = h.digest(8)
     return d
+
+
+def now() -> int:
+    return int(datetime.datetime.now().replace(
+        tzinfo=datetime.timezone.utc).timestamp() * 1000)
 
 
 def to_json(x) -> bytes:
@@ -40,37 +33,8 @@ def from_json(x: bytes) -> Dict[str, Any]:
 async def store_ca(data: Dict[Any, Any]) -> bytes:
     blob = to_json(data)
     h = hs(blob)
-    CAS_STORE = "INSERT OR REPLACE INTO cas (hash, data) VALUES (:hash, :data)"
-    await database.execute(CAS_STORE, values={"hash": h, "data": blob})
+    await model.cas_insert(h, blob)
     return h
-
-
-async def get_ca(hs: bytes) -> Optional[bytes]:
-    CAS_GET = "SELECT data FROM cas WHERE hash = :hash"
-    res = await database.fetch_one(CAS_GET, values={"hash": hs})
-    if res is None:
-        return None
-    (data, ) = res
-    return data
-
-
-def store_vsn(entity: str, vsn: Optional[int], pointer: bytes) -> Awaitable[int]:
-    STORE = "INSERT OR REPLACE INTO vsn (entity, vsn, pointer) VALUES (:entity, :vsn, :pointer)"
-    return database.execute(STORE,
-                            values={
-                                "entity": entity,
-                                "vsn": vsn,
-                                "pointer": pointer
-                            })
-
-
-async def get_latest_pointer(entity: str) -> Optional[bytes]:
-    Q = "SELECT pointer FROM vsn WHERE entity = :entity ORDER BY vsn DESC LIMIT 1"
-    res = await database.fetch_one(Q, values={"entity": entity})
-    if res is None:
-        return None
-    (ptr, ) = res
-    return ptr
 
 
 app = FastAPI()
@@ -78,14 +42,12 @@ app = FastAPI()
 
 @app.on_event("startup")
 async def startup():
-    await database.connect()
-    for query in SETUP_QUERIES:
-        await database.execute(query=query)
+    await model.setup()
 
 
 @app.on_event("shutdown")
 async def shutdown():
-    await database.disconnect()
+    await model.teardown()
 
 
 class StoreRequest(BaseModel):
@@ -104,50 +66,50 @@ def guess_media_type(data: bytes):
         return None
 
 
-@app.get("/entity/{entity}")
-async def read_item(entity: str):
+async def read_versioned(entity):
     ptr = await get_latest_pointer(entity)
     if ptr is None:
-        return Response(status_code=404)
-    data = await get_ca(ptr)
+        return None
+    data = await model.get_ca(ptr)
+    return data
+
+
+@app.get("/entity/{entity}")
+async def read_item(entity: str):
+    data = await read_versioned(entity)
     if data is None:
         return Response(status_code=404)
     return Response(data, media_type=guess_media_type(data))
 
 
-async def internal_ingest(entity: str, version: Optional[int], data: Dict[str, Any]) -> (bytes, int):
+async def internal_ingest(entity: str, version: Optional[int],
+                          data: Dict[str, Any]) -> Tuple[bytes, int]:
     if version is None:
         version = now()
     pointer = await store_ca(data)
-    await store_vsn(entity, version, pointer)
+    await model.store_vsn(entity, version, pointer)
     return pointer, version
+
 
 @app.post("/ingest")
 async def ingest_item(store_req: StoreRequest):
-    (pointer, version) = await internal_ingest(store_req.entity, store_req.version, store_req.data)
-    return {
-        "entity": store_req.entity,
-        "version": version,
-        "pointer": base64.b64encode(pointer)
-    }
+    (pointer, version) = await internal_ingest(store_req.entity,
+                                               store_req.version,
+                                               store_req.data)
+    return {"version": version, "pointer": base64.b64encode(pointer)}
+
 
 @app.post("/entity/{entity}")
 async def ingest(entity: str, data: Dict[str, Any]):
     (pointer, version) = await internal_ingest(entity, None, data)
-    return {
-        "entity": entity,
-        "version": version,
-        "pointer": base64.b64encode(pointer)
-    }
-    
-    
-    
-    
+    return {"version": version, "pointer": base64.b64encode(pointer)}
+
 
 @app.get("/healthz")
 def healthz():
-    return { "health": True }
+    return {"health": True}
+
 
 @app.get("/readyz")
 def readyz():
-    return { "ready": True }
+    return {"ready": True}
