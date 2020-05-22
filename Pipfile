@@ -1,0 +1,25 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+yapf = "*"
+mypy = "*"
+
+[packages]
+fastapi = "*"
+uvicorn = "*"
+tinydb = "*"
+databases = {extras = ["sqlite"],version = "*"}
+filetype = "*"
+asyncio-nats-client = "*"
+aiohttp = {extras = ["speedups"],version = "*"}
+
+[requires]
+python_version = "3.8"
+
+[scripts]
+server = "pipenv run uvicorn --reload main:app"
+fmt = "yapf -i -r ."
+check = "mypy ."
