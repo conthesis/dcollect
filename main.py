@@ -1,22 +1,21 @@
-from typing import Optional, Awaitable, Dict, Any, Tuple
-import base64
 from fastapi import FastAPI, Response, BackgroundTasks
 from fastapi.responses import ORJSONResponse
-import asyncio
-import aiohttp
 from pydantic import BaseModel
-import orjson
-import databases
-import hashlib
-import filetype  # type: ignore
+from typing import Optional, Dict, Any, Tuple
+import aiohttp
+import asyncio
+import base64
 import datetime
+import filetype  # type: ignore
+import hashlib
 import model
+import orjson
 import cas
 
-
 def now() -> int:
-    return int(datetime.datetime.now().replace(
-        tzinfo=datetime.timezone.utc).timestamp() * 1000)
+    return int(datetime.datetime.now()
+                                .replace(tzinfo=datetime.timezone.utc)
+                                .timestamp() * 1000)
 
 
 def pointer_as_str(pointer: bytes):
@@ -44,6 +43,10 @@ class StoreRequest(BaseModel):
     entity: str
     version: Optional[int] = None
     data: Dict[str, Any]
+
+
+class WatchRequest(BaseModel):
+    url: str
 
 
 def guess_media_type(data: bytes):
@@ -111,6 +114,11 @@ async def notify_watchers(entity: str):
     async for (url, version) in model.get_trailing_watches_for_entity(entity):
         update_promises.append(notify_watcher(entity, url, version))
     await asyncio.gather(*update_promises)
+
+
+@app.post("/entity/{entity}/watch")
+async def watch(entity: str, watch_request: WatchRequest):
+    await model.watch_store(entity, watch_request.url)
 
 
 @app.post("/entity/{entity}", response_class=ORJSONResponse)

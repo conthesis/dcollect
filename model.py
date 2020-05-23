@@ -12,7 +12,7 @@ SETUP_QUERIES = [
 
 
 async def cas_insert(hash_: bytes, data: bytes):
-    CAS_STORE = "INSERT OR REPLACE INTO cas (hash, data) VALUES (:hash, :data)"
+    CAS_STORE = "INSERT OR IGNORE INTO cas (hash, data) VALUES (:hash, :data)"
     await database.execute(CAS_STORE, values={"hash": hash_, "data": data})
 
 
@@ -25,10 +25,12 @@ async def get_ca(hs: bytes) -> Optional[bytes]:
     return data
 
 
-WATCH_STORE_QUERY = "INSERT OR REPLACE INTO watch (entity, url) VALUES (:entity, :url)"
+WATCH_STORE_QUERY = ("INSERT OR IGNORE INTO watch (entity, url) " +
+                     "VALUES (:entity, :url)")
 
 
 async def watch_store(entity: str, url: str):
+
     await database.execute(WATCH_STORE_QUERY,
                            values={
                                "entity": entity,
@@ -38,7 +40,8 @@ async def watch_store(entity: str, url: str):
 
 def store_vsn(entity: str, vsn: Optional[int],
               pointer: bytes) -> Awaitable[int]:
-    STORE = "INSERT OR REPLACE INTO vsn (entity, vsn, pointer) VALUES (:entity, :vsn, :pointer)"
+    STORE = ("INSERT OR IGNORE INTO vsn (entity, vsn, pointer) " +
+             "VALUES (:entity, :vsn, :pointer)")
     return database.execute(STORE,
                             values={
                                 "entity": entity,
@@ -48,7 +51,12 @@ def store_vsn(entity: str, vsn: Optional[int],
 
 
 async def get_latest_pointer(entity: str) -> Optional[bytes]:
-    Q = "SELECT pointer FROM vsn WHERE entity = :entity ORDER BY vsn DESC LIMIT 1"
+    Q = """
+    SELECT pointer
+    FROM vsn
+    WHERE entity = :entity
+    ORDER BY vsn DESC LIMIT 1
+    """
     res = await database.fetch_one(Q, values={"entity": entity})
     if res is None:
         return None
