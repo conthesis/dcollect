@@ -1,14 +1,13 @@
-from typing import Optional, Awaitable, Dict, Any, Tuple
-import base64
 from fastapi import FastAPI, Response, BackgroundTasks
-import asyncio
-import aiohttp
 from pydantic import BaseModel
-import json
-import databases
-import hashlib
-import filetype  # type: ignore
+from typing import Optional, Dict, Any, Tuple
+import aiohttp
+import asyncio
+import base64
 import datetime
+import filetype  # type: ignore
+import hashlib
+import json
 import model
 
 
@@ -20,8 +19,9 @@ def hs(data):
 
 
 def now() -> int:
-    return int(datetime.datetime.now().replace(
-        tzinfo=datetime.timezone.utc).timestamp() * 1000)
+    return int(datetime.datetime.now()
+                                .replace(tzinfo=datetime.timezone.utc)
+                                .timestamp() * 1000)
 
 
 def to_json(x) -> bytes:
@@ -62,6 +62,10 @@ class StoreRequest(BaseModel):
     data: Dict[str, Any]
 
 
+class WatchRequest(BaseModel):
+    url: str
+
+
 def guess_media_type(data: bytes):
     kind = filetype.match(data)
     if kind is not None:
@@ -73,7 +77,7 @@ def guess_media_type(data: bytes):
 
 
 async def read_versioned(entity):
-    ptr = await get_latest_pointer(entity)
+    ptr = await model.get_latest_pointer(entity)
     if ptr is None:
         return None
     data = await model.get_ca(ptr)
@@ -111,11 +115,16 @@ async def notify_watcher(entity: str, url: str, version: str):
     if await send_notification(url, entity):
         model.update_watch(entity, url, version)
 
+
 async def notify_watchers(entity: str):
     update_promises = []
     async for (url, version) in model.get_trailing_watches_for_entity(entity):
-        update_promises.append(notify_watcher(entity, url, version))
+        model.update_promises.append(notify_watcher(entity, url, version))
     await asyncio.gather(*update_promises)
+
+@app.put("/entity/{entity}/watch")
+async def watch(entity: str, watch_request: WatchRequest):
+    await model.watch_store(entity, watch_request.url)
 
 
 @app.post("/entity/{entity}")
