@@ -116,7 +116,7 @@ async def send_notification(url: str, entity: str):
             return False
 
 
-async def notify_watcher(entity: str, url: str, version: str):
+async def notify_watcher(entity: str, url: str, version: int):
     if await send_notification(url, entity):
         model.update_watch(entity, url, version)
 
