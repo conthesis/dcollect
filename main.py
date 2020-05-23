@@ -122,7 +122,8 @@ async def notify_watchers(entity: str):
         model.update_promises.append(notify_watcher(entity, url, version))
     await asyncio.gather(*update_promises)
 
-@app.put("/entity/{entity}/watch")
+
+@app.post("/entity/{entity}/watch")
 async def watch(entity: str, watch_request: WatchRequest):
     await model.watch_store(entity, watch_request.url)
 
