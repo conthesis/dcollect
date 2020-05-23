@@ -1,6 +1,7 @@
 from typing import Optional, Awaitable, Dict, Any, Tuple
 import base64
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, BackgroundTasks
+import aiohttp
 from pydantic import BaseModel
 import json
 import databases
@@ -39,14 +40,18 @@ async def store_ca(data: Dict[Any, Any]) -> bytes:
 
 app = FastAPI()
 
+http_session = None
+
 
 @app.on_event("startup")
 async def startup():
+    http_session = aiohttp.ClientSession()
     await model.setup()
 
 
 @app.on_event("shutdown")
 async def shutdown():
+    await http_session.close()
     await model.teardown()
 
 
@@ -91,17 +96,28 @@ async def internal_ingest(entity: str, version: Optional[int],
     return pointer, version
 
 
-@app.post("/ingest")
-async def ingest_item(store_req: StoreRequest):
-    (pointer, version) = await internal_ingest(store_req.entity,
-                                               store_req.version,
-                                               store_req.data)
-    return {"version": version, "pointer": base64.b64encode(pointer)}
+async def send_notification(url: str, entity: str):
+    if http_session is None:
+        raise RuntimeError("Trying to send notification before ready")
+    async with http_session.post(url, body=to_json({"entity": entity})) as resp:
+        if resp.status == 200:
+            return True
+        else:
+            return False
+
+
+async def notify_watchers(entity: str):
+    oks = []
+    async for (url, version) in model.get_trailing_watches_for_entity(entity):
+        if await send_notification(url, entity):
+            oks.append(url)
 
 
 @app.post("/entity/{entity}")
-async def ingest(entity: str, data: Dict[str, Any]):
+async def ingest(entity: str, data: Dict[str, Any],
+                 background_tasks: BackgroundTasks):
     (pointer, version) = await internal_ingest(entity, None, data)
+    background_tasks.add_task(notify_watchers, entity=entity)
     return {"version": version, "pointer": base64.b64encode(pointer)}
 
 
