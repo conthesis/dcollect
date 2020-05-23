@@ -31,10 +31,6 @@ def pointer_as_str(pointer: bytes):
 def to_json(x) -> bytes:
     return orjson.dumps(x, option=orjson.OPT_SORT_KEYS)
 
-def from_json(x: bytes) -> Dict[str, Any]:
-    return orjson.loads(x)
-
-
 async def store_ca(data: Dict[Any, Any]) -> bytes:
     blob = to_json(data)
     h = hs(blob)
