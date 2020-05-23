@@ -1,6 +1,7 @@
 from typing import Optional, Awaitable, Dict, Any, Tuple
 import base64
 from fastapi import FastAPI, Response, BackgroundTasks
+from fastapi.responses import ORJSONResponse
 import asyncio
 import aiohttp
 from pydantic import BaseModel
@@ -92,7 +93,7 @@ async def read_item(entity: str):
     return Response(data, media_type=guess_media_type(data))
 
 
-@app.get("/entity/{entity}/history")
+@app.get("/entity/{entity}/history", response_class=ORJSONResponse)
 async def read_item_history(entity: str):
     history = [{
         "vsn": vsn,
@@ -133,7 +134,7 @@ async def notify_watchers(entity: str):
     await asyncio.gather(*update_promises)
 
 
-@app.post("/entity/{entity}")
+@app.post("/entity/{entity}", response_class=ORJSONResponse)
 async def ingest(entity: str, data: Dict[str, Any],
                  background_tasks: BackgroundTasks):
     (pointer, version) = await internal_ingest(entity, None, data)
@@ -141,11 +142,11 @@ async def ingest(entity: str, data: Dict[str, Any],
     return {"version": version, "pointer": pointer_as_str(pointer)}
 
 
-@app.get("/healthz")
+@app.get("/healthz", response_class=ORJSONResponse)
 def healthz():
     return {"health": True}
 
 
-@app.get("/readyz")
+@app.get("/readyz", response_class=ORJSONResponse)
 def readyz():
     return {"ready": True}
