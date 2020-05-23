@@ -1,6 +1,7 @@
 from typing import Optional, Awaitable, Dict, Any, Tuple
 import base64
 from fastapi import FastAPI, Response, BackgroundTasks
+import asyncio
 import aiohttp
 from pydantic import BaseModel
 import json
@@ -111,8 +112,10 @@ async def notify_watcher(entity: str, url: str, version: str):
         model.update_watch(entity, url, version)
 
 async def notify_watchers(entity: str):
+    update_promises = []
     async for (url, version) in model.get_trailing_watches_for_entity(entity):
-        notify_watcher(entity, url, version)
+        update_promises.append(notify_watcher(entity, url, version))
+    await asyncio.gather(*update_promises)
 
 
 @app.post("/entity/{entity}")
