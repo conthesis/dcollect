@@ -5,13 +5,12 @@ from fastapi.responses import ORJSONResponse
 import asyncio
 import aiohttp
 from pydantic import BaseModel
-import json
+import orjson
 import databases
 import hashlib
 import filetype  # type: ignore
 import datetime
 import model
-
 
 def hs(data):
     h = hashlib.shake_128()
@@ -30,11 +29,10 @@ def pointer_as_str(pointer: bytes):
 
 
 def to_json(x) -> bytes:
-    return json.dumps(x, sort_keys=True, separators=(',', ':')).encode('utf-8')
-
+    return orjson.dumps(x, option=orjson.OPT_SORT_KEYS)
 
 def from_json(x: bytes) -> Dict[str, Any]:
-    return json.loads(x.decode("utf-8"))
+    return orjson.loads(x)
 
 
 async def store_ca(data: Dict[Any, Any]) -> bytes:
