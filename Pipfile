@@ -6,6 +6,8 @@ verify_ssl = true
 [dev-packages]
 yapf = "*"
 mypy = "*"
+pytest = "*"
+requests = "*"
 
 [packages]
 fastapi = "*"
@@ -24,3 +26,4 @@ python_version = "3.8"
 server = "pipenv run uvicorn --reload main:app"
 fmt = "yapf -i -r ."
 check = "mypy ."
+test = "python -m pytest"
