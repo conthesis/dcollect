@@ -1,5 +1,5 @@
 import databases
-from typing import Awaitable, Optional, Dict, AsyncGenerator, Tuple
+from typing import Awaitable, Optional, Dict, AsyncGenerator, Tuple, TypedDict
 import datetime
 DATABASE_URL = "sqlite:///./test.db"
 database = databases.Database(DATABASE_URL)
@@ -87,6 +87,17 @@ async def update_watch(entity: str, url: str, version: int):
                                "url": url,
                                "version": version
                            })
+
+
+async def get_history(entity: str) -> AsyncGenerator[Tuple[int, bytes], None]:
+    Q = """
+    SELECT vsn, pointer FROM vsn WHERE entity = :entity
+    """
+    res = database.iterate(Q, values={
+        "entity": entity,
+    })
+    async for row in res:
+        yield (row[0], row[1])
 
 
 async def setup():

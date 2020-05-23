@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Response, BackgroundTasks
+from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, Tuple
 import aiohttp
@@ -7,8 +8,8 @@ import base64
 import datetime
 import filetype  # type: ignore
 import hashlib
-import json
 import model
+import orjson
 
 
 def hs(data):
@@ -24,12 +25,16 @@ def now() -> int:
                                 .timestamp() * 1000)
 
 
+def pointer_as_str(pointer: bytes):
+    return base64.b64encode(pointer)
+
+
 def to_json(x) -> bytes:
-    return json.dumps(x, sort_keys=True, separators=(',', ':')).encode('utf-8')
+    return orjson.dumps(x, option=orjson.OPT_SORT_KEYS)
 
 
 def from_json(x: bytes) -> Dict[str, Any]:
-    return json.loads(x.decode("utf-8"))
+    return orjson.loads(x)
 
 
 async def store_ca(data: Dict[Any, Any]) -> bytes:
@@ -92,6 +97,15 @@ async def read_item(entity: str):
     return Response(data, media_type=guess_media_type(data))
 
 
+@app.get("/entity/{entity}/history", response_class=ORJSONResponse)
+async def read_item_history(entity: str):
+    history = [{
+        "vsn": vsn,
+        "pointer": pointer_as_str(pointer)
+    } async for (vsn, pointer) in model.get_history(entity)]
+    return {"history": history}
+
+
 async def internal_ingest(entity: str, version: Optional[int],
                           data: Dict[str, Any]) -> Tuple[bytes, int]:
     if version is None:
@@ -104,7 +118,8 @@ async def internal_ingest(entity: str, version: Optional[int],
 async def send_notification(url: str, entity: str):
     if http_session is None:
         raise RuntimeError("Trying to send notification before ready")
-    async with http_session.post(url, body=to_json({"entity": entity})) as resp:
+    async with http_session.post(url, body=to_json({"entity":
+                                                    entity})) as resp:
         if resp.status == 200:
             return True
         else:
@@ -128,19 +143,19 @@ async def watch(entity: str, watch_request: WatchRequest):
     await model.watch_store(entity, watch_request.url)
 
 
-@app.post("/entity/{entity}")
+@app.post("/entity/{entity}", response_class=ORJSONResponse)
 async def ingest(entity: str, data: Dict[str, Any],
                  background_tasks: BackgroundTasks):
     (pointer, version) = await internal_ingest(entity, None, data)
     background_tasks.add_task(notify_watchers, entity=entity)
-    return {"version": version, "pointer": base64.b64encode(pointer)}
+    return {"version": version, "pointer": pointer_as_str(pointer)}
 
 
-@app.get("/healthz")
+@app.get("/healthz", response_class=ORJSONResponse)
 def healthz():
     return {"health": True}
 
 
-@app.get("/readyz")
+@app.get("/readyz", response_class=ORJSONResponse)
 def readyz():
     return {"ready": True}
