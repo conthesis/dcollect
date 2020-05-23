@@ -25,7 +25,7 @@ async def get_ca(hs: bytes) -> Optional[bytes]:
     return data
 
 
-WATCH_STORE_QUERY = ("INSERT OR IGNORE INTO watch (entity, url)" +
+WATCH_STORE_QUERY = ("INSERT OR IGNORE INTO watch (entity, url) " +
                      "VALUES (:entity, :url)")
 
 
@@ -40,7 +40,7 @@ async def watch_store(entity: str, url: str):
 
 def store_vsn(entity: str, vsn: Optional[int],
               pointer: bytes) -> Awaitable[int]:
-    STORE = ("INSERT OR IGNORE INTO vsn (entity, vsn, pointer)" +
+    STORE = ("INSERT OR IGNORE INTO vsn (entity, vsn, pointer) " +
              "VALUES (:entity, :vsn, :pointer)")
     return database.execute(STORE,
                             values={
