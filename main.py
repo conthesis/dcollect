@@ -119,7 +119,7 @@ async def notify_watcher(entity: str, url: str, version: str):
 async def notify_watchers(entity: str):
     update_promises = []
     async for (url, version) in model.get_trailing_watches_for_entity(entity):
-        model.update_promises.append(notify_watcher(entity, url, version))
+        update_promises.append(notify_watcher(entity, url, version))
     await asyncio.gather(*update_promises)
 
 
