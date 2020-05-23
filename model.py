@@ -65,7 +65,7 @@ async def get_latest_pointer(entity: str) -> Optional[bytes]:
 
 
 async def get_trailing_watches_for_entity(
-        entity: str) -> AsyncGenerator[Tuple[str, str], None]:
+        entity: str) -> AsyncGenerator[Tuple[str, int], None]:
     Q = """
     WITH latest AS
          (SELECT entity, vsn as latest_vsn FROM vsn WHERE entity = :ORDER BY entity vsn DESC LIMIT 1)
@@ -74,7 +74,7 @@ async def get_trailing_watches_for_entity(
     WHERE latest_vsn > watch.vsn;
     """
     async for e in database.iterate(query=Q, values={"entity": entity}):
-        yield (e[0], e[1])
+        yield (e[0], int(e[1]))
 
 
 async def update_watch(entity: str, url: str, version: int):
