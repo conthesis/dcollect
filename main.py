@@ -12,6 +12,7 @@ import filetype  # type: ignore
 import datetime
 import model
 
+
 def hs(data):
     h = hashlib.shake_128()
     h.update(data)
@@ -30,6 +31,7 @@ def pointer_as_str(pointer: bytes):
 
 def to_json(x) -> bytes:
     return orjson.dumps(x, option=orjson.OPT_SORT_KEYS)
+
 
 async def store_ca(data: Dict[Any, Any]) -> bytes:
     blob = to_json(data)
