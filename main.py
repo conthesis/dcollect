@@ -11,13 +11,7 @@ import hashlib
 import filetype  # type: ignore
 import datetime
 import model
-
-
-def hs(data):
-    h = hashlib.shake_128()
-    h.update(data)
-    d = h.digest(8)
-    return d
+import cas
 
 
 def now() -> int:
@@ -27,17 +21,6 @@ def now() -> int:
 
 def pointer_as_str(pointer: bytes):
     return base64.b64encode(pointer)
-
-
-def to_json(x) -> bytes:
-    return orjson.dumps(x, option=orjson.OPT_SORT_KEYS)
-
-
-async def store_ca(data: Dict[Any, Any]) -> bytes:
-    blob = to_json(data)
-    h = hs(blob)
-    await model.cas_insert(h, blob)
-    return h
 
 
 app = FastAPI()
@@ -102,7 +85,7 @@ async def internal_ingest(entity: str, version: Optional[int],
                           data: Dict[str, Any]) -> Tuple[bytes, int]:
     if version is None:
         version = now()
-    pointer = await store_ca(data)
+    pointer = await cas.store(data)
     await model.store_vsn(entity, version, pointer)
     return pointer, version
 
@@ -110,8 +93,8 @@ async def internal_ingest(entity: str, version: Optional[int],
 async def send_notification(url: str, entity: str):
     if http_session is None:
         raise RuntimeError("Trying to send notification before ready")
-    async with http_session.post(url, body=to_json({"entity":
-                                                    entity})) as resp:
+    body = orjson.dumps({"entity": entity})
+    async with http_session.post(url, body=body) as resp:
         if resp.status == 200:
             return True
         else:
