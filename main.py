@@ -24,6 +24,10 @@ def now() -> int:
         tzinfo=datetime.timezone.utc).timestamp() * 1000)
 
 
+def pointer_as_str(pointer: bytes):
+    return base64.b64encode(pointer)
+
+
 def to_json(x) -> bytes:
     return json.dumps(x, sort_keys=True, separators=(',', ':')).encode('utf-8')
 
@@ -73,7 +77,7 @@ def guess_media_type(data: bytes):
 
 
 async def read_versioned(entity):
-    ptr = await get_latest_pointer(entity)
+    ptr = await model.get_latest_pointer(entity)
     if ptr is None:
         return None
     data = await model.get_ca(ptr)
@@ -88,6 +92,15 @@ async def read_item(entity: str):
     return Response(data, media_type=guess_media_type(data))
 
 
+@app.get("/entity/{entity}/history")
+async def read_item_history(entity: str):
+    history = [{
+        "vsn": vsn,
+        "pointer": pointer_as_str(pointer)
+    } async for (vsn, pointer) in model.get_history(entity)]
+    return {"history": history}
+
+
 async def internal_ingest(entity: str, version: Optional[int],
                           data: Dict[str, Any]) -> Tuple[bytes, int]:
     if version is None:
@@ -100,7 +113,8 @@ async def internal_ingest(entity: str, version: Optional[int],
 async def send_notification(url: str, entity: str):
     if http_session is None:
         raise RuntimeError("Trying to send notification before ready")
-    async with http_session.post(url, body=to_json({"entity": entity})) as resp:
+    async with http_session.post(url, body=to_json({"entity":
+                                                    entity})) as resp:
         if resp.status == 200:
             return True
         else:
@@ -110,6 +124,7 @@ async def send_notification(url: str, entity: str):
 async def notify_watcher(entity: str, url: str, version: str):
     if await send_notification(url, entity):
         model.update_watch(entity, url, version)
+
 
 async def notify_watchers(entity: str):
     update_promises = []
@@ -123,7 +138,7 @@ async def ingest(entity: str, data: Dict[str, Any],
                  background_tasks: BackgroundTasks):
     (pointer, version) = await internal_ingest(entity, None, data)
     background_tasks.add_task(notify_watchers, entity=entity)
-    return {"version": version, "pointer": base64.b64encode(pointer)}
+    return {"version": version, "pointer": pointer_as_str(pointer)}
 
 
 @app.get("/healthz")
