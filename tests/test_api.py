@@ -41,9 +41,10 @@ def test_ingest():
     assert p1 is not None and p2 is not None
     assert p1 == p2, "Pointers should be the same"
 
+
 def test_ingest_changes():
-    input_data1 = { "a": 1 }
-    input_data2 = { "a": 2 }
+    input_data1 = {"a": 1}
+    input_data2 = {"a": 2}
     entity = rand_entity()
     post_json(entity, input_data1)
 
@@ -60,6 +61,13 @@ def test_ingest_changes():
     p2 = read_history["history"][1].get("pointer")
     assert p1 is not None and p2 is not None
     assert p1 != p2, "Pointers should not be the same"
+
+
+def test_add_watch():
+    entity = rand_entity()
+    post_json(entity, {"a": 1})
+    post_json(f"{entity}/watch", {"url": "http://httpbin.com/status/200"})
+    post_json(entity, {"a": 2})
 
 
 def test_healthz():
