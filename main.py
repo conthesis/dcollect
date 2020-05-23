@@ -106,11 +106,13 @@ async def send_notification(url: str, entity: str):
             return False
 
 
+async def notify_watcher(entity: str, url: str, version: str):
+    if await send_notification(url, entity):
+        model.update_watch(entity, url, version)
+
 async def notify_watchers(entity: str):
-    oks = []
     async for (url, version) in model.get_trailing_watches_for_entity(entity):
-        if await send_notification(url, entity):
-            oks.append(url)
+        notify_watcher(entity, url, version)
 
 
 @app.post("/entity/{entity}")
