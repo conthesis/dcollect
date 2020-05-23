@@ -30,8 +30,18 @@ WATCH_STORE_QUERY = ("INSERT OR IGNORE INTO watch (entity, url) " +
 
 
 async def watch_store(entity: str, url: str):
-
     await database.execute(WATCH_STORE_QUERY,
+                           values={
+                               "entity": entity,
+                               "url": url
+                           })
+
+
+WATCH_DELETE_QUERY = "DELETE FROM watch WHERE entity = :entity AND url = :url"
+
+
+async def watch_delete(entity: str, url: str):
+    await database.execute(WATCH_DELETE_QUERY,
                            values={
                                "entity": entity,
                                "url": url
@@ -68,7 +78,7 @@ async def get_trailing_watches_for_entity(
         entity: str) -> AsyncGenerator[Tuple[str, int], None]:
     Q = """
     WITH latest AS
-         (SELECT entity, vsn as latest_vsn FROM vsn WHERE entity = :ORDER BY entity vsn DESC LIMIT 1)
+         (SELECT entity, vsn as latest_vsn FROM vsn WHERE entity = :entity ORDER BY vsn DESC LIMIT 1)
     SELECT url, latest_vsn FROM watch
     INNER JOIN latest on watch.entity = latest.entity
     WHERE latest_vsn > watch.vsn;

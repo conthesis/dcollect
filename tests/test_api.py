@@ -63,12 +63,13 @@ def test_ingest_changes():
     assert p1 != p2, "Pointers should not be the same"
 
 
-def test_add_watch():
+def test_watch():
+    watch_req = {"url": "http://httpbin.com/status/200"}
     entity = rand_entity()
     post_json(entity, {"a": 1})
-    post_json(f"{entity}/watch", {"url": "http://httpbin.com/status/200"})
+    post_json(f"{entity}/watch", watch_req)
     post_json(entity, {"a": 2})
-
+    post_json(f"{entity}/unwatch", watch_req)
 
 def test_healthz():
     res = client.get("/healthz")

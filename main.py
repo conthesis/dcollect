@@ -12,10 +12,10 @@ import model
 import orjson
 import cas
 
+
 def now() -> int:
-    return int(datetime.datetime.now()
-                                .replace(tzinfo=datetime.timezone.utc)
-                                .timestamp() * 1000)
+    return int(datetime.datetime.now().replace(
+        tzinfo=datetime.timezone.utc).timestamp() * 1000)
 
 
 def pointer_as_str(pointer: bytes):
@@ -46,6 +46,10 @@ class StoreRequest(BaseModel):
 
 
 class WatchRequest(BaseModel):
+    url: str
+
+
+class UnwatchRequest(BaseModel):
     url: str
 
 
@@ -119,6 +123,11 @@ async def notify_watchers(entity: str):
 @app.post("/entity/{entity}/watch")
 async def watch(entity: str, watch_request: WatchRequest):
     await model.watch_store(entity, watch_request.url)
+
+
+@app.post("/entity/{entity}/unwatch")
+async def unwatch(entity: str, unwatch_request: UnwatchRequest):
+    await model.watch_delete(entity, unwatch_request.url)
 
 
 @app.post("/entity/{entity}", response_class=ORJSONResponse)
