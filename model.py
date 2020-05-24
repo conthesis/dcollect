@@ -1,6 +1,7 @@
-import databases
-from typing import Awaitable, Optional, Dict, AsyncGenerator, Tuple, TypedDict
 import datetime
+from typing import AsyncGenerator, Awaitable, Dict, Optional, Tuple, TypedDict
+
+import databases
 
 DATABASE_URL = "sqlite:///./test.db"
 database = databases.Database(DATABASE_URL)

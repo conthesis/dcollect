@@ -1,7 +1,9 @@
 import hashlib
-import model
+from typing import Any, Dict
+
 import orjson
-from typing import Dict, Any
+
+import model
 
 
 def to_json(x) -> bytes:
