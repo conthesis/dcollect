@@ -2,7 +2,7 @@ from fastapi import FastAPI, Response, BackgroundTasks
 from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, Tuple
-import aiohttp
+import httpx
 import asyncio
 import base64
 import datetime
@@ -24,18 +24,18 @@ def pointer_as_str(pointer: bytes):
 
 app = FastAPI()
 
-http_session = None
+http_client = None
 
 
 @app.on_event("startup")
 async def startup():
-    http_session = aiohttp.ClientSession()
+    http_client = httpx.AsyncClient()
     await model.setup()
 
 
 @app.on_event("shutdown")
 async def shutdown():
-    await http_session.close()
+    await http_client.aclose()
     await model.teardown()
 
 
@@ -98,15 +98,11 @@ async def internal_ingest(entity: str, version: Optional[int],
 
 
 async def send_notification(url: str, entity: str):
-    if http_session is None:
+    if http_client is None:
         raise RuntimeError("Trying to send notification before ready")
     body = orjson.dumps({"entity": entity})
-    async with http_session.post(url, body=body) as resp:
-        if resp.status == 200:
-            return True
-        else:
-            return False
-
+    resp = await http_client.post(url, body=body)
+    return resp.status == 200
 
 async def notify_watcher(entity: str, url: str, version: int):
     if await send_notification(url, entity):

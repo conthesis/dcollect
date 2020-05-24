@@ -16,8 +16,8 @@ tinydb = "*"
 databases = {extras = ["sqlite"],version = "*"}
 filetype = "*"
 asyncio-nats-client = "*"
-aiohttp = {extras = ["speedups"],version = "*"}
 orjson = "*"
+httpx = "*"
 
 [requires]
 python_version = "3.8"
