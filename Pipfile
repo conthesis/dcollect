@@ -8,6 +8,7 @@ mypy = "*"
 pytest = "*"
 requests = "*"
 black = "*"
+isort = {extras = ["pipfile"],version = "*"}
 
 [packages]
 fastapi = "*"
@@ -25,5 +26,6 @@ python_version = "3.8"
 [scripts]
 server = "pipenv run uvicorn --reload main:app"
 fmt = "black -t py38  ."
+fmt_imports = "isort --multi-line=3 --trailing-comma --force-grid-wrap=0 --use-parentheses --line-width=88"
 check = "mypy ."
 test = "python -m pytest"
