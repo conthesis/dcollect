@@ -14,8 +14,9 @@ import cas
 
 
 def now() -> int:
-    return int(datetime.datetime.now().replace(
-        tzinfo=datetime.timezone.utc).timestamp() * 1000)
+    return int(
+        datetime.datetime.now().replace(tzinfo=datetime.timezone.utc).timestamp() * 1000
+    )
 
 
 def pointer_as_str(pointer: bytes):
@@ -81,15 +82,16 @@ async def read_item(entity: str):
 
 @app.get("/entity/{entity}/history", response_class=ORJSONResponse)
 async def read_item_history(entity: str):
-    history = [{
-        "vsn": vsn,
-        "pointer": pointer_as_str(pointer)
-    } async for (vsn, pointer) in model.get_history(entity)]
+    history = [
+        {"vsn": vsn, "pointer": pointer_as_str(pointer)}
+        async for (vsn, pointer) in model.get_history(entity)
+    ]
     return {"history": history}
 
 
-async def internal_ingest(entity: str, version: Optional[int],
-                          data: Dict[str, Any]) -> Tuple[bytes, int]:
+async def internal_ingest(
+    entity: str, version: Optional[int], data: Dict[str, Any]
+) -> Tuple[bytes, int]:
     if version is None:
         version = now()
     pointer = await cas.store(data)
@@ -103,6 +105,7 @@ async def send_notification(url: str, entity: str):
     body = orjson.dumps({"entity": entity})
     resp = await http_client.post(url, body=body)
     return resp.status == 200
+
 
 async def notify_watcher(entity: str, url: str, version: int):
     if await send_notification(url, entity):
@@ -127,8 +130,7 @@ async def unwatch(entity: str, unwatch_request: UnwatchRequest):
 
 
 @app.post("/entity/{entity}", response_class=ORJSONResponse)
-async def ingest(entity: str, data: Dict[str, Any],
-                 background_tasks: BackgroundTasks):
+async def ingest(entity: str, data: Dict[str, Any], background_tasks: BackgroundTasks):
     (pointer, version) = await internal_ingest(entity, None, data)
     background_tasks.add_task(notify_watchers, entity=entity)
     return {"version": version, "pointer": pointer_as_str(pointer)}

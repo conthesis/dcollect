@@ -71,6 +71,7 @@ def test_watch():
     post_json(entity, {"a": 2})
     post_json(f"{entity}/unwatch", watch_req)
 
+
 def test_healthz():
     res = client.get("/healthz")
     assert res.status_code == 200
