@@ -102,11 +102,12 @@ async def internal_ingest(
 
 
 async def send_notification(url: str, entity: str):
-    if http_client is None:
-        raise RuntimeError("Trying to send notification before ready")
-    body = orjson.dumps({"entity": entity})
-    resp = await http_client.post(url, body=body)
-    return resp.status == 200
+    async with httpx.AsyncClient() as client:
+        if client is None:
+            raise RuntimeError("Trying to send notification before ready")
+        body = {"entity": entity}
+        resp = await client.post(url=url, json=body)
+        return resp.status_code == 200
 
 
 async def notify_watcher(entity: str, url: str, version: int):

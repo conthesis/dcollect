@@ -9,7 +9,7 @@ database = databases.Database(DATABASE_URL)
 SETUP_QUERIES = [
     """CREATE TABLE IF NOT EXISTS cas (hash BLOB(8) PRIMARY KEY, data BLOB) """,
     """CREATE TABLE IF NOT EXISTS vsn (entity TEXT, vsn INTEGER, pointer BLOB(8), PRIMARY KEY (entity, vsn))""",
-    """CREATE TABLE IF NOT EXISTS watch (entity TEXT, url TEXT, vsn INTEGER, PRIMARY KEY (entity, url))""",
+    """CREATE TABLE IF NOT EXISTS watch (entity TEXT, url TEXT, vsn INTEGER DEFAULT 0 NOT NULL, PRIMARY KEY (entity, url))""",
 ]
 
 
