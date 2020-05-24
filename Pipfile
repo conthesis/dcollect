@@ -4,10 +4,10 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-yapf = "*"
 mypy = "*"
 pytest = "*"
 requests = "*"
+black = "*"
 
 [packages]
 fastapi = "*"
@@ -24,6 +24,6 @@ python_version = "3.8"
 
 [scripts]
 server = "pipenv run uvicorn --reload main:app"
-fmt = "yapf -i -r ."
+fmt = "black -t py38  ."
 check = "mypy ."
 test = "python -m pytest"
