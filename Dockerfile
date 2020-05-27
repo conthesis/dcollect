@@ -4,5 +4,5 @@ COPY Pipfile Pipfile.lock /app/
 WORKDIR /app
 RUN pip install pipenv
 RUN pipenv install --system --deploy
-COPY tests dcollect /app/
-CMD ["uvicorn", "dcollect.main:app"]
+COPY dcollect /app/dcollect
+CMD ["uvicorn", "--host", "0.0.0.0", "dcollect.main:app"]
