@@ -2,7 +2,7 @@ import asyncio
 import base64
 import datetime
 import hashlib
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, List
 
 import filetype  # type: ignore
 import httpx
@@ -11,8 +11,8 @@ from fastapi import BackgroundTasks, FastAPI, Response
 from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel
 
-import cas
-import model
+import dcollect.cas as cas
+import dcollect.model as model
 
 
 def now() -> int:

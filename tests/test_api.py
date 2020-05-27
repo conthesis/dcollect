@@ -2,7 +2,7 @@ import uuid
 
 from fastapi.testclient import TestClient
 
-import main
+import dcollect.main as main
 
 client = TestClient(main.app)
 

@@ -3,7 +3,7 @@ from typing import Any, Dict
 
 import orjson
 
-import model
+import dcollect.model as model
 
 
 def to_json(x) -> bytes:
