@@ -109,14 +109,13 @@ async def internal_ingest(
     return pointer, version
 
 
-async def send_notification(url: str, entity: str):
-    body = {"entity": entity}
-    resp = await http_client.post(url=url, json=body)
+async def send_notification(url: str):
+    resp = await http_client.post(url=url)
     return resp.status_code == 200
 
 
 async def notify_watcher(entity: str, url: str, version: int):
-    if await send_notification(url, entity):
+    if await send_notification(url):
         model.update_watch(entity, url, version)
 
 
@@ -141,7 +140,7 @@ async def watchMultiple(watch_multiple: WatchMultipleRequest):
 @app.post("/unwatchMultiple")
 async def unwatchMultiple(unwatch_multiple: WatchMultipleRequest):
     for x in unwatch_multiple.to_watch:
-        await model.watch_delete(entity, unwatch_request.url)
+        await model.watch_delete(unwatch_multiple.entity, unwatch_multiple.url)
 
 
 @app.post("/entity/{entity}/unwatch")
