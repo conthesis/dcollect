@@ -135,7 +135,7 @@ async def watch(entity: str, watch_request: WatchRequest):
 
 @app.post("/watchMultiple")
 async def watchMultiple(watch_multiple: WatchMultipleRequest):
-    for x in watch_multiple:
+    for x in watch_multiple.to_watch:
         await model.watch_store(x.entity, x.url)
 
 @app.post("/entity/{entity}/unwatch")
