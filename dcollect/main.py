@@ -54,12 +54,15 @@ class WatchRequest(BaseModel):
 class UnwatchRequest(BaseModel):
     url: str
 
+
 class WatchMultipleItem(BaseModel):
     entity: str
     url: str
 
+
 class WatchMultipleRequest(BaseModel):
     to_watch: List[WatchMultipleItem]
+
 
 def guess_media_type(data: bytes):
     kind = filetype.match(data)
@@ -133,6 +136,13 @@ async def watch(entity: str, watch_request: WatchRequest):
 async def watchMultiple(watch_multiple: WatchMultipleRequest):
     for x in watch_multiple.to_watch:
         await model.watch_store(x.entity, x.url)
+
+
+@app.post("/unwatchMultiple")
+async def unwatchMultiple(unwatch_multiple: WatchMultipleRequest):
+    for x in unwatch_multiple.to_watch:
+        await model.watch_delete(entity, unwatch_request.url)
+
 
 @app.post("/entity/{entity}/unwatch")
 async def unwatch(entity: str, unwatch_request: UnwatchRequest):
