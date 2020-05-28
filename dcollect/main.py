@@ -27,12 +27,11 @@ def pointer_as_str(pointer: bytes):
 
 app = FastAPI()
 
-http_client = None
+http_client = httpx.AsyncClient()
 
 
 @app.on_event("startup")
 async def startup():
-    http_client = httpx.AsyncClient()
     await model.setup()
 
 
@@ -108,12 +107,9 @@ async def internal_ingest(
 
 
 async def send_notification(url: str, entity: str):
-    async with httpx.AsyncClient() as client:
-        if client is None:
-            raise RuntimeError("Trying to send notification before ready")
-        body = {"entity": entity}
-        resp = await client.post(url=url, json=body)
-        return resp.status_code == 200
+    body = {"entity": entity}
+    resp = await http_client.post(url=url, json=body)
+    return resp.status_code == 200
 
 
 async def notify_watcher(entity: str, url: str, version: int):
