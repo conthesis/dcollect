@@ -13,16 +13,7 @@ from pydantic import BaseModel
 
 import dcollect.cas as cas
 import dcollect.model as model
-
-
-def now() -> int:
-    return int(
-        datetime.datetime.now().replace(tzinfo=datetime.timezone.utc).timestamp() * 1000
-    )
-
-
-def pointer_as_str(pointer: bytes):
-    return base64.b64encode(pointer)
+from dcollect.util import now, pointer_as_str
 
 
 app = FastAPI()
