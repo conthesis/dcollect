@@ -15,20 +15,22 @@ from dcollect.notify import Notify
 from dcollect.util import guess_media_type, now, pointer_as_str
 
 app = FastAPI()
-
+mq = MQ()
 http_client = httpx.AsyncClient()
-notify = Notify(http_client)
+notify = Notify(http_client, mq)
 
 
 @app.on_event("startup")
 async def startup():
     await model.setup()
-
+    await mq.startup()
+    await notify.setup()
 
 @app.on_event("shutdown")
 async def shutdown():
     await http_client.aclose()
     await model.teardown()
+    await mq.shutdown()
 
 
 class StoreRequest(BaseModel):
@@ -114,7 +116,7 @@ async def unwatch(entity: str, unwatch_request: UnwatchRequest):
 @app.post("/entity/{entity}", response_class=ORJSONResponse)
 async def ingest(entity: str, data: Dict[str, Any], background_tasks: BackgroundTasks):
     (pointer, version) = await internal_ingest(entity, None, data)
-    background_tasks.add_task(notify.notify_watchers, entity=entity)
+    background_tasks.add_task(notify.schedule, entity=entity)
     return {"version": version, "pointer": pointer_as_str(pointer)}
 
 
