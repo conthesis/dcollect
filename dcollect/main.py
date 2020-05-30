@@ -140,7 +140,7 @@ async def watchMultiple(watch_multiple: WatchMultipleRequest):
 @app.post("/unwatchMultiple")
 async def unwatchMultiple(unwatch_multiple: WatchMultipleRequest):
     for x in unwatch_multiple.to_watch:
-        await model.watch_delete(x.entity, unwatch_multiple.url)
+        await model.watch_delete(x.entity, x.url)
 
 
 @app.post("/entity/{entity}/unwatch")
