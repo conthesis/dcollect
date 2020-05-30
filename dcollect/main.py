@@ -1,10 +1,7 @@
 import asyncio
-import base64
-import datetime
 import hashlib
-from typing import Any, Dict, Optional, Tuple, List
+from typing import Any, Dict, List, Optional, Tuple
 
-import filetype  # type: ignore
 import httpx
 import orjson
 from fastapi import BackgroundTasks, FastAPI, Response
@@ -13,12 +10,14 @@ from pydantic import BaseModel
 
 import dcollect.cas as cas
 import dcollect.model as model
-from dcollect.util import now, pointer_as_str
-
+from dcollect.mq import MQ
+from dcollect.notify import Notify
+from dcollect.util import guess_media_type, now, pointer_as_str
 
 app = FastAPI()
 
 http_client = httpx.AsyncClient()
+notify = Notify(http_client)
 
 
 @app.on_event("startup")
@@ -53,16 +52,6 @@ class WatchMultipleItem(BaseModel):
 
 class WatchMultipleRequest(BaseModel):
     to_watch: List[WatchMultipleItem]
-
-
-def guess_media_type(data: bytes):
-    kind = filetype.match(data)
-    if kind is not None:
-        return kind.type
-    elif data[0] == b"{"[0]:
-        return "appliction/json"
-    else:
-        return None
 
 
 async def read_versioned(entity):
@@ -100,23 +89,6 @@ async def internal_ingest(
     return pointer, version
 
 
-async def send_notification(url: str):
-    resp = await http_client.post(url=url)
-    return resp.status_code == 200
-
-
-async def notify_watcher(entity: str, url: str, version: int):
-    if await send_notification(url):
-        model.update_watch(entity, url, version)
-
-
-async def notify_watchers(entity: str):
-    update_promises = []
-    async for (url, version) in model.get_trailing_watches_for_entity(entity):
-        update_promises.append(notify_watcher(entity, url, version))
-    await asyncio.gather(*update_promises)
-
-
 @app.post("/entity/{entity}/watch")
 async def watch(entity: str, watch_request: WatchRequest):
     await model.watch_store(entity, watch_request.url)
@@ -142,7 +114,7 @@ async def unwatch(entity: str, unwatch_request: UnwatchRequest):
 @app.post("/entity/{entity}", response_class=ORJSONResponse)
 async def ingest(entity: str, data: Dict[str, Any], background_tasks: BackgroundTasks):
     (pointer, version) = await internal_ingest(entity, None, data)
-    background_tasks.add_task(notify_watchers, entity=entity)
+    background_tasks.add_task(notify.notify_watchers, entity=entity)
     return {"version": version, "pointer": pointer_as_str(pointer)}
 
 
