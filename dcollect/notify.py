@@ -1,9 +1,12 @@
-import httpx
 import asyncio
+
+import httpx
+
 import dcollect.model as model
 import dcollect.mq as mq
 
 NOTIFY_TOPIC = "dcollect-notify-v1"
+
 
 class Notify:
     def __init__(self, http_client: httpx.AsyncClient, mq: mq.MQ):
@@ -11,7 +14,7 @@ class Notify:
         self.mq = mq
 
     async def setup(self):
-        self.notify_id = self.mq.subscribe(NOTIFY_TOPIC, self.on_notify)
+        self.notify_id = await self.mq.subscribe(NOTIFY_TOPIC, self.on_notify)
 
     async def on_notify(self, msg):
         entity = msg.data.decode()

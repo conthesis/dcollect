@@ -2,35 +2,33 @@ import asyncio
 import hashlib
 from typing import Any, Dict, List, Optional, Tuple
 
-import httpx
 import orjson
-from fastapi import BackgroundTasks, FastAPI, Response
+from fastapi import BackgroundTasks, Depends, FastAPI, Response
 from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel
 
 import dcollect.cas as cas
-import dcollect.model as model
-from dcollect.mq import MQ
-from dcollect.notify import Notify
+import dcollect.deps as deps
+import dcollect.status as status
 from dcollect.util import guess_media_type, now, pointer_as_str
 
 app = FastAPI()
-mq = MQ()
-http_client = httpx.AsyncClient()
-notify = Notify(http_client, mq)
+
+app.include_router(status.router, prefix="/status", tags=["status"])
 
 
 @app.on_event("startup")
 async def startup():
-    await model.setup()
-    await mq.startup()
-    await notify.setup()
+    await deps.model().setup()
+    await deps.mq().startup()
+    await deps.notify().setup()
+
 
 @app.on_event("shutdown")
 async def shutdown():
-    await http_client.aclose()
-    await model.teardown()
-    await mq.shutdown()
+    await deps.http_client().aclose()
+    await deps.model().teardown()
+    await deps.mq().shutdown()
 
 
 class StoreRequest(BaseModel):
@@ -56,7 +54,7 @@ class WatchMultipleRequest(BaseModel):
     to_watch: List[WatchMultipleItem]
 
 
-async def read_versioned(entity):
+async def read_versioned(model, entity):
     ptr = await model.get_latest_pointer(entity)
     if ptr is None:
         return None
@@ -65,15 +63,15 @@ async def read_versioned(entity):
 
 
 @app.get("/entity/{entity}")
-async def read_item(entity: str):
-    data = await read_versioned(entity)
+async def read_item(entity: str, model=Depends(deps.model)):
+    data = await read_versioned(model, entity)
     if data is None:
         return Response(status_code=404)
     return Response(data, media_type=guess_media_type(data))
 
 
 @app.get("/entity/{entity}/history", response_class=ORJSONResponse)
-async def read_item_history(entity: str):
+async def read_item_history(entity: str, model=Depends(deps.model)):
     history = [
         {"vsn": vsn, "pointer": pointer_as_str(pointer)}
         async for (vsn, pointer) in model.get_history(entity)
@@ -82,7 +80,7 @@ async def read_item_history(entity: str):
 
 
 async def internal_ingest(
-    entity: str, version: Optional[int], data: Dict[str, Any]
+    model, entity: str, version: Optional[int], data: Dict[str, Any]
 ) -> Tuple[bytes, int]:
     if version is None:
         version = now()
@@ -92,39 +90,40 @@ async def internal_ingest(
 
 
 @app.post("/entity/{entity}/watch")
-async def watch(entity: str, watch_request: WatchRequest):
+async def watch(entity: str, watch_request: WatchRequest, model=Depends(deps.model)):
     await model.watch_store(entity, watch_request.url)
 
 
 @app.post("/watchMultiple")
-async def watchMultiple(watch_multiple: WatchMultipleRequest):
+async def watch_multiple(
+    watch_multiple: WatchMultipleRequest, model=Depends(deps.model)
+):
     for x in watch_multiple.to_watch:
         await model.watch_store(x.entity, x.url)
 
 
 @app.post("/unwatchMultiple")
-async def unwatchMultiple(unwatch_multiple: WatchMultipleRequest):
+async def unwatch_multiple(
+    unwatch_multiple: WatchMultipleRequest, model=Depends(deps.model)
+):
     for x in unwatch_multiple.to_watch:
         await model.watch_delete(x.entity, x.url)
 
 
 @app.post("/entity/{entity}/unwatch")
-async def unwatch(entity: str, unwatch_request: UnwatchRequest):
+async def unwatch(
+    entity: str, unwatch_request: UnwatchRequest, model=Depends(deps.model)
+):
     await model.watch_delete(entity, unwatch_request.url)
 
 
 @app.post("/entity/{entity}", response_class=ORJSONResponse)
-async def ingest(entity: str, data: Dict[str, Any], background_tasks: BackgroundTasks):
-    (pointer, version) = await internal_ingest(entity, None, data)
-    background_tasks.add_task(notify.schedule, entity=entity)
+async def ingest(
+    entity: str,
+    data: Dict[str, Any],
+    model=Depends(deps.model),
+    notify=Depends(deps.notify),
+):
+    (pointer, version) = await internal_ingest(model, entity, None, data)
+    await notify.schedule(entity)
     return {"version": version, "pointer": pointer_as_str(pointer)}
-
-
-@app.get("/healthz", response_class=ORJSONResponse)
-def healthz():
-    return {"health": True}
-
-
-@app.get("/readyz", response_class=ORJSONResponse)
-def readyz():
-    return {"ready": True}

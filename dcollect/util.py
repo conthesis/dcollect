@@ -11,7 +11,7 @@ def now() -> int:
     )
 
 
-def pointer_as_str(pointer: bytes) -> str:
+def pointer_as_str(pointer: bytes) -> bytes:
     return base64.b64encode(pointer)
 
 
