@@ -36,5 +36,4 @@ class Notify:
             await asyncio.gather(*update_promises)
 
     async def schedule(self, entity: str):
-        entity = entity.encode("utf-8")
-        await self.mq.publish(NOTIFY_TOPIC, entity)
+        await self.mq.publish(NOTIFY_TOPIC, entity.encode("utf-8"))
