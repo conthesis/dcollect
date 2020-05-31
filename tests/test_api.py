@@ -9,7 +9,6 @@ import dcollect.main as main
 os.environ["DATABASE_URL"] = "sqlite://./test.db"
 
 
-
 client = TestClient(main.app)
 
 

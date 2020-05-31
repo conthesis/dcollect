@@ -3,7 +3,6 @@ from typing import AsyncGenerator, Awaitable, Optional, Tuple
 
 import databases
 
-
 SETUP_QUERIES = [
     """CREATE TABLE IF NOT EXISTS cas (hash BLOB(8) PRIMARY KEY, data BLOB) """,
     """CREATE TABLE IF NOT EXISTS vsn (entity TEXT, vsn INTEGER, pointer BLOB(8), PRIMARY KEY (entity, vsn))""",
