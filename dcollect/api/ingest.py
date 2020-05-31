@@ -15,7 +15,7 @@ async def internal_ingest(
 ) -> Tuple[bytes, int]:
     if version is None:
         version = now()
-    pointer = await cas.store(data)
+    pointer = await cas.store(model, data)
     await model.store_vsn(entity, version, pointer)
     return pointer, version
 

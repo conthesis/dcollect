@@ -1,26 +1,44 @@
+from typing import Optional
+
 import httpx
 
-import dcollect.model as model_mod
+from dcollect.model import Model
 from dcollect.mq import MQ
 from dcollect.notify import Notify
 
-http_client_ = httpx.AsyncClient()
-mq_ = MQ()
-notify_ = Notify(http_client_, mq_)
+http_client_: Optional[httpx.AsyncClient] = None
+mq_: Optional[MQ] = None
+notify_: Optional[Notify] = None
+model_: Optional[Model] = None
 
 
-def model():
-    # HACK: The model module is not a class yet lets pretend it is
-    return model_mod
+async def model() -> Model:
+    global model_
+    if model_ is None:
+        model_ = Model()
+        await model_.setup()
+    return model_
 
 
-def notify():
+async def notify() -> Notify:
+    global notify_
+    if notify_ is None:
+        notify_ = Notify(await http_client(), await mq(), await model())
+        await notify_.setup()
+
     return notify_
 
 
-def http_client():
+async def http_client() -> httpx.AsyncClient:
+    global http_client_
+    if http_client_ is None:
+        http_client_ = httpx.AsyncClient()
     return http_client_
 
 
-def mq():
+async def mq() -> MQ:
+    global mq_
+    if mq_ is None:
+        mq_ = MQ()
+        await mq_.startup()
     return mq_

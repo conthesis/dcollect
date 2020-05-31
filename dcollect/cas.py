@@ -17,7 +17,7 @@ def hs(data):
     return d
 
 
-async def store(data: Dict[Any, Any]) -> bytes:
+async def store(model: model.Model, data: Dict[Any, Any]) -> bytes:
     blob = to_json(data)
     h = hs(blob)
     await model.cas_insert(h, blob)

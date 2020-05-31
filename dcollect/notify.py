@@ -3,8 +3,8 @@ import logging
 
 import httpx
 
-import dcollect.model as model
-import dcollect.mq as mq
+from dcollect.model import Model
+from dcollect.mq import MQ
 
 NOTIFY_TOPIC = "dcollect-notify-v1"
 
@@ -12,7 +12,12 @@ logger = logging.getLogger("dcollect.notify")
 
 
 class Notify:
-    def __init__(self, http_client: httpx.AsyncClient, mq: mq.MQ):
+    mq: MQ
+    http_client: httpx.AsyncClient
+    model: Model
+
+    def __init__(self, http_client: httpx.AsyncClient, mq: MQ, model: Model):
+        self.model = model
         self.http_client = http_client
         self.mq = mq
 
@@ -35,11 +40,11 @@ class Notify:
 
     async def notify_watcher(self, entity: str, url: str, version: int):
         if await self.send_notification(url, entity):
-            model.update_watch(entity, url, version)
+            self.model.update_watch(entity, url, version)
 
     async def notify_watchers(self, entity: str):
         update_promises = []
-        async for (url, version) in model.get_trailing_watches_for_entity(entity):
+        async for (url, version) in self.model.get_trailing_watches_for_entity(entity):
             update_promises.append(self.notify_watcher(entity, url, version))
             await asyncio.gather(*update_promises)
 

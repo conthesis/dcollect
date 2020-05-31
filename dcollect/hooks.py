@@ -2,12 +2,11 @@ import dcollect.deps as deps
 
 
 async def startup():
-    await deps.model().setup()
-    await deps.mq().startup()
-    await deps.notify().setup()
+    """Hook to be run when the server starts"""
+
 
 
 async def shutdown():
-    await deps.http_client().aclose()
-    await deps.model().teardown()
-    await deps.mq().shutdown()
+    await (await deps.http_client()).aclose()
+    await (await deps.model()).teardown()
+    await (await deps.mq()).shutdown()

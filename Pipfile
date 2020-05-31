@@ -15,7 +15,7 @@ autoflake = "*"
 fastapi = "*"
 uvicorn = "*"
 tinydb = "*"
-databases = {extras = ["sqlite"],version = "*"}
+databases = {extras = ["postgresql", "sqlite"],version = "*"}
 filetype = "*"
 asyncio-nats-client = "*"
 orjson = "*"
