@@ -26,9 +26,18 @@ class MQ:
         if self.nc is not None:
             await self.nc.close()
 
-    async def subscribe(self, topic: str, cb: Callable[[Any], None]):
+    async def subscribe(
+        self,
+        topic: str,
+        cb: Callable[[Any], None],
+        manual_acks: bool = True,
+        ack_wat: int = 30,
+    ):
         if self.nc is not None:
             return await self.nc.subscribe(topic, cb=cb)
+
+    async def ack(self, msg):
+        return await self.nc.ack(msg)
 
     async def publish(self, topic: str, data: Union[str, bytes]):
         if self.nc is not None:

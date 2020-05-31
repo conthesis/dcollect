@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import httpx
 
@@ -6,6 +7,8 @@ import dcollect.model as model
 import dcollect.mq as mq
 
 NOTIFY_TOPIC = "dcollect-notify-v1"
+
+logger = logging.getLogger("dcollect.notify")
 
 
 class Notify:
@@ -18,7 +21,12 @@ class Notify:
 
     async def on_notify(self, msg):
         entity = msg.data.decode()
-        await self.notify_watchers(entity)
+        try:
+            await self.notify_watchers(entity)
+        except Exception as ex:
+            logger.error("Failed notifying", exc_info=True)
+        else:
+            await self.mq.ack(msg)
 
     async def send_notification(self, url: str, entity: str):
         body = {"entity": entity}
