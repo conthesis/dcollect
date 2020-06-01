@@ -31,7 +31,7 @@ fmt = "black -t py38  ."
 fmt_imports = "isort --multi-line=3 --trailing-comma --force-grid-wrap=0 --use-parentheses --line-width=88"
 check = "mypy ."
 test = "python -m pytest"
-fix_flake = "autoflake -r -i *"
+fix_flake = "autoflake -r -i ."
 
 [pipenv]
 allow_prereleases = true

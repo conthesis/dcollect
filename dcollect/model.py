@@ -1,6 +1,5 @@
-import logging
 import os
-from typing import AsyncGenerator, Awaitable, Optional, Tuple, List, Iterator
+from typing import AsyncGenerator, Iterator, Optional, Tuple
 
 import dcollect.redis as redis
 
@@ -22,11 +21,8 @@ class Model:
     def __init__(self):
         self.redis = redis.from_url(os.environ["REDIS_URL"])
 
-    async def setup(self):
-        pass
-
     async def teardown(self):
-        pass
+        self.disconnect()
 
     async def cas_insert(self, hash_: bytes, data: bytes):
         await self.redis.set(_cas_key(hash_), data)
