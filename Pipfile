@@ -10,16 +10,16 @@ requests = "*"
 black = "*"
 isort = {extras = ["pipfile"],version = "*"}
 autoflake = "*"
+fakeredis = "*"
 
 [packages]
 fastapi = "*"
 uvicorn = "*"
-tinydb = "*"
-databases = {extras = ["postgresql", "sqlite"],version = "*"}
 filetype = "*"
 asyncio-nats-client = "*"
 orjson = "*"
 httpx = "*"
+aredis = "*"
 
 [requires]
 python_version = "3.8"

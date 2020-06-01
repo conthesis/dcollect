@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 import dcollect.hooks as hooks
 import dcollect.main as main
 
-os.environ["DATABASE_URL"] = "sqlite://./test.db"
+os.environ["REDIS_URL"] = "__unittest__"
 
 
 client = TestClient(main.app)
