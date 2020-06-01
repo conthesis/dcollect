@@ -20,6 +20,7 @@ asyncio-nats-client = "*"
 orjson = "*"
 httpx = "*"
 aredis = "*"
+hiredis = "*"
 
 [requires]
 python_version = "3.8"
