@@ -1,8 +1,10 @@
 from typing import Optional, Union
 
-class UnitTestRedis():
+
+class UnitTestRedis:
     def __init__(self):
-        import fakeredis # type: ignore
+        import fakeredis  # type: ignore
+
         self.server = fakeredis.FakeServer()
         self.redis = fakeredis.FakeStrictRedis(server=self.server)
 
@@ -24,18 +26,25 @@ class UnitTestRedis():
     async def zrem(self, key: bytes, data: bytes):
         return self.redis.zrem(key, data)
 
-    async def lpush(self, key: bytes, data: bytes):
+    async def lpush(self, key: bytes, data: bytes) -> int:
         return self.redis.lpush(key, data)
 
     async def lrange(self, key: bytes, start: int, end: int):
         return self.redis.lrange(key, start, end)
 
-    async def zrangebyscore(self, key: bytes, start: Union[str, int], end: Union[str, int]):
+    async def zrangebyscore(
+        self, key: bytes, start: Union[str, int], end: Union[str, int]
+    ):
         return self.redis.zrangebyscore(key, start, end)
+
+    async def llen(self, key: bytes) -> int:
+        return self.redis.llen(key)
+
 
 class RedisWrap:
     def __init__(self, url: str):
-        from aredis import StrictRedis # type: ignore
+        from aredis import StrictRedis  # type: ignore
+
         self.redis = StrictRedis.from_url(url)
 
     async def set(self, key: bytes, value: bytes):
@@ -56,14 +65,20 @@ class RedisWrap:
     async def zrem(self, key: bytes, data: bytes):
         return await self.redis.zrem(key, data)
 
-    async def lpush(self, key: bytes, data: bytes):
+    async def lpush(self, key: bytes, data: bytes) -> int:
         return await self.redis.lpush(key, data)
 
     async def lrange(self, key: bytes, start: int, end: int):
         return await self.redis.lrange(key, start, end)
 
-    async def zrangebyscore(self, key: bytes, start: Union[str, int], end: Union[str, int]):
+    async def zrangebyscore(
+        self, key: bytes, start: Union[str, int], end: Union[str, int]
+    ):
         return await self.redis.zrangebyscore(key, start, end)
+
+    async def llen(self, key: bytes) -> int:
+        return await self.redis.llen(key)
+
 
 def from_url(url: str):
     if url == "__unittest__":

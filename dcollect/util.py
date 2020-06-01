@@ -5,12 +5,6 @@ from typing import Optional
 import filetype  # type: ignore
 
 
-def now() -> int:
-    return int(
-        datetime.datetime.now().replace(tzinfo=datetime.timezone.utc).timestamp() * 1000
-    )
-
-
 def pointer_as_str(pointer: bytes) -> bytes:
     return base64.b64encode(pointer)
 

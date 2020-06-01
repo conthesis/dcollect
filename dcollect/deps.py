@@ -16,7 +16,6 @@ async def model() -> Model:
     global model_
     if model_ is None:
         model_ = Model()
-        await model_.setup()
     return model_
 
 
