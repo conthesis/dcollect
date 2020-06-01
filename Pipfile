@@ -11,6 +11,7 @@ black = "*"
 isort = {extras = ["pipfile"],version = "*"}
 autoflake = "*"
 fakeredis = "*"
+nox = "*"
 
 [packages]
 fastapi = "*"
@@ -26,10 +27,11 @@ hiredis = "*"
 python_version = "3.8"
 
 [scripts]
+fmt = "nox fmt"
 server = "pipenv run uvicorn --reload dcollect.main:app"
-fmt = "black -t py38  ."
-fmt_imports = "isort --multi-line=3 --trailing-comma --force-grid-wrap=0 --use-parentheses --line-width=88"
-check = "mypy ."
+fmt_black = "black -t py38 -q  ."
+fmt_imports = "isort --multi-line=3 --trailing-comma --force-grid-wrap=0 --use-parentheses --line-width=88 -y -q"
+typecheck = "mypy dcollect"
 test = "python -m pytest"
 fix_flake = "autoflake -r -i ."
 
