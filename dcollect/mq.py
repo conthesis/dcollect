@@ -1,5 +1,5 @@
 import os
-from typing import Any, Callable, Union
+from typing import Any, Callable, Coroutine, Union
 
 from nats.aio.client import Client as NATS  # type: ignore
 from nats.aio.errors import (  # type: ignore
@@ -12,24 +12,24 @@ NATS_URL = os.environ.get("NATS_URL", None)
 
 
 class MQ:
-    def __init__(self):
+    def __init__(self) -> None:
         if NATS_URL is not None:
             self.nc = NATS()
         else:
             self.nc = None
 
-    async def startup(self):
+    async def startup(self) -> None:
         if NATS_URL is not None:
             await self.nc.connect(NATS_URL)
 
-    async def shutdown(self):
+    async def shutdown(self) -> None:
         if self.nc is not None:
             await self.nc.close()
 
     async def subscribe(
         self,
         topic: str,
-        cb: Callable[[Any], None],
+        cb: Callable[[Any], Coroutine[Any, Any, None]],
         manual_acks: bool = True,
         ack_wat: int = 30,
     ):

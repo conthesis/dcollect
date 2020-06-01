@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import ORJSONResponse
@@ -24,7 +24,7 @@ async def ingest(
     data: Dict[str, Any],
     model=Depends(deps.model),
     notify=Depends(deps.notify),
-):
+) -> Dict[str, Any]:
     (pointer, version) = await internal_ingest(model, entity, data)
     await notify.schedule(entity)
     return {"pointer": pointer_as_str(pointer), "version": version}

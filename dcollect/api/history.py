@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import ORJSONResponse
 
@@ -8,7 +10,7 @@ router = APIRouter()
 
 
 @router.get("/entity/{entity}/history", response_class=ORJSONResponse)
-async def read_item_history(entity: str, model=Depends(deps.model)):
+async def read_item_history(entity: str, model=Depends(deps.model)) -> Dict[str, Any]:
     history = [
         {"pointer": pointer_as_str(pointer)}
         for pointer in await model.get_history(entity)

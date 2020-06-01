@@ -1,5 +1,5 @@
 import os
-from typing import AsyncGenerator, Iterator, Optional, Tuple
+from typing import AsyncGenerator, List, Optional, Tuple
 
 import dcollect.redis as redis
 
@@ -10,6 +10,7 @@ def _cas_key(hash_: bytes) -> bytes:
 
 def _vsn_ptr_key(entity: str) -> bytes:
     return b"dcollect_vsn_ptr:" + entity.encode("utf-8")
+
 
 def _watch_key(entity: str) -> bytes:
     return b"dcollect_watch:" + entity.encode("utf-8")
@@ -57,9 +58,9 @@ class Model:
         ):
             yield (url.decode("utf-8"), vsn)
 
-    async def update_watch(self, entity: str, url: str, version: int):
+    async def update_watch(self, entity: str, url: str, version: int) -> None:
         await self.redis.zadd(_watch_key(entity), version, url)
 
-    async def get_history(self, entity: str) -> Iterator[Tuple[int, bytes]]:
+    async def get_history(self, entity: str) -> List[bytes]:
         pointers = await self.redis.lrange(_vsn_ptr_key(entity), 0, 100)
         return pointers
