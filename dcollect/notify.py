@@ -4,7 +4,6 @@ import logging
 import httpx
 
 from dcollect.model import Model
-from dcollect.mq import MQ
 
 NOTIFY_TOPIC = "dcollect-notify-v1"
 
@@ -12,41 +11,35 @@ logger = logging.getLogger("dcollect.notify")
 
 
 class Notify:
-    mq: MQ
     http_client: httpx.AsyncClient
     model: Model
+    run: bool
+    fut_done: asyncio.Future
 
-    def __init__(self, http_client: httpx.AsyncClient, mq: MQ, model: Model):
+    def __init__(self, http_client: httpx.AsyncClient, model: Model):
         self.model = model
         self.http_client = http_client
-        self.mq = mq
+        self.run = True
+        loop = asyncio.get_event_loop()
+        self.fut_done = loop.create_future()
 
     async def setup(self) -> None:
-        self.notify_id = await self.mq.subscribe(NOTIFY_TOPIC, self.on_notify)
+        asyncio.create_task(self.notify_loop())
 
-    async def on_notify(self, msg) -> None:
-        entity = msg.data.decode()
-        try:
-            await self.notify_watchers(entity)
-        except Exception as ex:
-            logger.error("Failed notifying", exc_info=True)
-        else:
-            await self.mq.ack(msg)
+    async def shutdown(self):
+        self.run = False
+        await self.fut_done
+
+    async def notify_loop(self):
+        while self.run:
+            async for notification in self.model.get_notifications():
+                tasks = []
+                for watcher in notification.watchers:
+                    tasks.append(self.send_notification(watcher, notification.entity))
+                res = await asyncio.gather(*tasks)
+        self.fut_done.set_result(True)
 
     async def send_notification(self, url: str, entity: str) -> bool:
         body = {"entity": entity}
         resp = await self.http_client.post(url=url, json=body)
         return resp.status_code == 200
-
-    async def notify_watcher(self, entity: str, url: str, version: int) -> None:
-        if await self.send_notification(url, entity):
-            self.model.update_watch(entity, url, version)
-
-    async def notify_watchers(self, entity: str) -> None:
-        update_promises = []
-        async for (url, version) in self.model.get_trailing_watches_for_entity(entity):
-            update_promises.append(self.notify_watcher(entity, url, version))
-            await asyncio.gather(*update_promises)
-
-    async def schedule(self, entity: str) -> None:
-        await self.mq.publish(NOTIFY_TOPIC, entity.encode("utf-8"))

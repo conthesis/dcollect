@@ -28,8 +28,17 @@ class UnitTestRedis:
     async def zrem(self, key: RedisArg, data: RedisArg) -> int:
         return self.redis.zrem(key, data)
 
-    async def lpush(self, key: RedisArg, data: RedisArg) -> int:
-        return self.redis.lpush(key, data)
+    async def lpush(self, key: RedisArg, *data: List[RedisArg]) -> int:
+        return self.redis.lpush(key, *data)
+
+    async def rpush(self, key: RedisArg, *data: List[RedisArg]) -> int:
+        return self.redis.lpush(key, *data)
+
+    async def blpop(self, keys: List[RedisArg], timeout: int) -> List[bytes]:
+        return self.redis.blpop(keys, timeout)
+
+    async def lpop(self, key: RedisArg) -> Optional[bytes]:
+        return self.redis.lpop(key)
 
     async def lrange(self, key: RedisArg, start: int, end: int) -> List[bytes]:
         return self.redis.lrange(key, start, end)
@@ -67,8 +76,17 @@ class RedisWrap:
     async def zrem(self, key: RedisArg, data: RedisArg) -> int:
         return await self.redis.zrem(key, data)
 
-    async def lpush(self, key: RedisArg, data: RedisArg) -> int:
-        return await self.redis.lpush(key, data)
+    async def lpush(self, key: RedisArg, *data: List[RedisArg]) -> int:
+        return await self.redis.lpush(key, *data)
+
+    async def rpush(self, key: RedisArg, *data: List[RedisArg]) -> int:
+        return await self.redis.lpush(key, *data)
+
+    async def blpop(self, keys: List[RedisArg], timeout: int) -> List[bytes]:
+        return await self.redis.blpop(keys, timeout)
+
+    async def lpop(self, key: RedisArg) -> Optional[bytes]:
+        return await self.redis.lpop(key)
 
     async def lrange(self, key: RedisArg, start: int, end: int) -> List[bytes]:
         return await self.redis.lrange(key, start, end)

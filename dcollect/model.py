@@ -1,5 +1,8 @@
+import dataclasses
 import os
-from typing import AsyncGenerator, List, Optional, Tuple
+from typing import Any, AsyncGenerator, List, Optional, Tuple
+
+import orjson
 
 import dcollect.redis as redis
 
@@ -14,6 +17,23 @@ def _vsn_ptr_key(entity: str) -> bytes:
 
 def _watch_key(entity: str) -> bytes:
     return b"dcollect_watch:" + entity.encode("utf-8")
+
+
+NOTIFY_QUEUE_KEY = "dcollect_notify"
+NOTIFY_QUEUE_TIMEOUT = 5
+
+
+@dataclasses.dataclass
+class Notification:
+    entity: str
+    version: str
+    watchers: List[str]
+
+    @classmethod
+    def from_bytes(cls, x: bytes) -> "Notification":
+        print(x)
+        data = orjson.loads(x)
+        return cls(**data)
 
 
 class Model:
@@ -36,7 +56,31 @@ class Model:
         return await self.redis.zrem(_watch_key(entity), url)
 
     async def store_vsn(self, entity: str, pointer: bytes) -> int:
-        return await self.redis.lpush(_vsn_ptr_key(entity), pointer)
+        version = await self.redis.lpush(_vsn_ptr_key(entity), pointer)
+        watchers = await self.redis.zrangebyscore(_watch_key(entity), "-inf", "+inf")
+        if len(watchers) > 0:
+            msg = orjson.dumps(
+                {
+                    "entity": entity,
+                    "version": version,
+                    "watchers": [w.decode("utf-8") for w in watchers],
+                }
+            )
+            await self.redis.rpush(NOTIFY_QUEUE_KEY, msg)
+        return version
+
+    async def get_notifications(self) -> AsyncGenerator[Notification, Any]:
+        current = None
+        while True:
+            current = await self.redis.lpop(NOTIFY_QUEUE_KEY)
+            if current is not None:
+                yield Notification.from_bytes(current)
+            else:
+                break
+
+        res = await self.redis.blpop([NOTIFY_QUEUE_KEY], 5)
+        if res:
+            yield Notification.from_bytes(res[1])
 
     async def get_latest_pointer(self, entity: str) -> Optional[bytes]:
         res = await self.redis.lrange(_vsn_ptr_key(entity), 0, 0)
@@ -57,9 +101,6 @@ class Model:
             _watch_key(entity), "-inf", f"({str(vsn)}"
         ):
             yield (url.decode("utf-8"), vsn)
-
-    async def update_watch(self, entity: str, url: str, version: int) -> None:
-        await self.redis.zadd(_watch_key(entity), version, url)
 
     async def get_history(self, entity: str) -> List[bytes]:
         pointers = await self.redis.lrange(_vsn_ptr_key(entity), 0, 100)
