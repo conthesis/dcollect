@@ -16,7 +16,9 @@ jobs:
     - name: Dockerbuild
       uses: docker/build-push-action@v1
       with:
+        add_git_labels: true
+        tag_with_ref: true
         registry: docker.pkg.github.com
-        name: ${{github.repository}}/dcollect
-        #username: ${{ secrets.DOCKER_USERNAME }}
-        #password: ${{ secrets.DOCKER_PASSWORD }}
+        repository: ${{github.repository}}/dcollect
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
