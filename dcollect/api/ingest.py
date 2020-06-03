@@ -26,5 +26,4 @@ async def ingest(
     notify=Depends(deps.notify),
 ) -> Dict[str, Any]:
     (pointer, version) = await internal_ingest(model, entity, data)
-    await notify.schedule(entity)
     return {"pointer": pointer_as_str(pointer), "version": version}

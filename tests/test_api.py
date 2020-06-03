@@ -1,16 +1,16 @@
 import os
 import uuid
 
+import pytest
 from fastapi.testclient import TestClient
 
 import dcollect.hooks as hooks
 import dcollect.main as main
 
 os.environ["REDIS_URL"] = "__unittest__"
-
+os.environ["NO_SUBSCRIBE"] = "1"
 
 client = TestClient(main.app)
-
 
 def rand_entity():
     inst = uuid.uuid4().hex

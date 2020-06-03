@@ -31,7 +31,6 @@ class Notification:
 
     @classmethod
     def from_bytes(cls, x: bytes) -> "Notification":
-        print(x)
         data = orjson.loads(x)
         return cls(**data)
 

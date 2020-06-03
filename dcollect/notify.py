@@ -1,3 +1,4 @@
+import os
 import asyncio
 import logging
 
@@ -24,20 +25,30 @@ class Notify:
         self.fut_done = loop.create_future()
 
     async def setup(self) -> None:
-        asyncio.create_task(self.notify_loop())
+        if os.environ.get("NO_SUBSCRIBE") == "1":
+            self.fut_done.set_result(True)
+            return
+        self.notify_task = asyncio.create_task(self.notify_loop())
 
     async def shutdown(self):
         self.run = False
-        await self.fut_done
+        try:
+            await asyncio.wait_for(self.fut_done, timeout=5.0)
+        except asyncio.TimeoutError:
+            self.notify_task.cancel()
+
 
     async def notify_loop(self):
-        while self.run:
-            async for notification in self.model.get_notifications():
-                tasks = []
-                for watcher in notification.watchers:
-                    tasks.append(self.send_notification(watcher, notification.entity))
-                res = await asyncio.gather(*tasks)
-        self.fut_done.set_result(True)
+        try:
+            while self.run:
+                async for notification in self.model.get_notifications():
+                    tasks = []
+                    for watcher in notification.watchers:
+                        tasks.append(self.send_notification(watcher, notification.entity))
+                    res = await asyncio.gather(*tasks)
+            self.fut_done.set_result(True)
+        except asyncio.CancelledError:
+            return
 
     async def send_notification(self, url: str, entity: str) -> bool:
         body = {"entity": entity}
