@@ -12,7 +12,18 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@maste
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+    - name: Install pipenv
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install pipenv
+        pipenv install
+    - name: Run tests
+      run: |
+        pipenv run test
     - name: Dockerbuild
       uses: docker/build-push-action@v1.1.0
       with:
