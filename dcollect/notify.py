@@ -29,23 +29,24 @@ class Notify:
             self.fut_done.set_result(True)
             return
         self.notify_task = asyncio.create_task(self.notify_loop())
+        logging.info("Setup done")
 
     async def shutdown(self):
         self.run = False
         try:
-            await asyncio.wait_for(self.fut_done, timeout=5.0)
+            await asyncio.wait_for(self.fut_done, timeout=7.0)
         except asyncio.TimeoutError:
             self.notify_task.cancel()
 
 
     async def notify_loop(self):
+        logging.info("Starting notify loop")
         try:
             while self.run:
+                logging.info("Polling for updates.")
                 async for notification in self.model.get_notifications():
-                    tasks = []
-                    for watcher in notification.watchers:
-                        tasks.append(self.send_notification(watcher, notification.entity))
-                    res = await asyncio.gather(*tasks)
+                    res = await self.send_notification("http://entwatcher:8000/v1/updates", notification.entity)
+
             self.fut_done.set_result(True)
         except asyncio.CancelledError:
             return
@@ -53,4 +54,5 @@ class Notify:
     async def send_notification(self, url: str, entity: str) -> bool:
         body = {"entity": entity}
         resp = await self.http_client.post(url=url, json=body)
+        logger.info(f"Sent notification {url=} {resp.status_code=}")
         return resp.status_code == 200
