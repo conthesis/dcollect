@@ -69,16 +69,6 @@ def test_ingest_changes():
     assert p1 is not None and p2 is not None
     assert p1 != p2, "Pointers should not be the same"
 
-
-def test_watch():
-    watch_req = {"url": "http://httpbin.com/status/200"}
-    entity = rand_entity()
-    post_json(entity, {"a": 1})
-    post_json(f"{entity}/watch", watch_req)
-    post_json(entity, {"a": 2})
-    post_json(f"{entity}/unwatch", watch_req)
-
-
 def test_healthz():
     res = client.get("/healthz")
     assert res.status_code == 200
