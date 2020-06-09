@@ -41,12 +41,6 @@ class Model:
     async def teardown(self):
         self.disconnect()
 
-    async def cas_insert(self, hash_: bytes, data: bytes):
-        await self.redis.set(_cas_key(hash_), data)
-
-    async def get_ca(self, hs: bytes) -> Optional[bytes]:
-        return await self.redis.get(_cas_key(hs))
-
     async def store_vsn(self, entity: str, pointer: bytes) -> int:
         version = await self.redis.lpush(_vsn_ptr_key(entity), pointer)
         msg = orjson.dumps(

@@ -1,24 +1,18 @@
-import hashlib
-from typing import Any, Dict
+import os
 
-import orjson
+from typing import Any, Dict, Optional
 
-import dcollect.model as model
+class CAS:
+    def __init__(self, http):
+        self.http = http
+        self.base_url = os.environ["CAS_URL"]
 
+    async def store(self, data: Dict[any, any]) -> bytes:
+        resp = await self.http.post(f"{self.base_url}/v1/store", json=data)
+        resp.raise_for_status()
+        return await resp.aread()
 
-def to_json(x) -> bytes:
-    return orjson.dumps(x, option=orjson.OPT_SORT_KEYS)
-
-
-def hs(data):
-    h = hashlib.shake_128()
-    h.update(data)
-    d = h.digest(8)
-    return d
-
-
-async def store(model: model.Model, data: Dict[Any, Any]) -> bytes:
-    blob = to_json(data)
-    h = hs(blob)
-    await model.cas_insert(h, blob)
-    return h
+    async def get(self, key: bytes) -> bytes:
+        resp = await self.http.post(f"{self.base_url}/v1/get", data=key)
+        resp.raise_for_status()
+        return await resp.aread()
