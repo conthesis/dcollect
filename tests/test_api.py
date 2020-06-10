@@ -35,7 +35,6 @@ def get(url, required_status=200):
     return res
 
 
-
 def post(url, data, required_status=200):
     res = client.post(url, data=data)
     assert res.status_code == required_status

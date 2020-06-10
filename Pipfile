@@ -16,7 +16,6 @@ nox = "*"
 [packages]
 fastapi = "*"
 uvicorn = "*"
-filetype = "*"
 orjson = "*"
 httpx = "*"
 aredis = "*"
