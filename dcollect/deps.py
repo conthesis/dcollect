@@ -3,9 +3,9 @@ from typing import Optional
 import httpx
 from fastapi import Depends
 
+from dcollect.cas import CAS
 from dcollect.model import Model
 from dcollect.notify import Notify
-from dcollect.cas import CAS
 
 http_client_: Optional[httpx.AsyncClient] = None
 notify_: Optional[Notify] = None

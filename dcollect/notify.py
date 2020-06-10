@@ -1,6 +1,6 @@
-import os
 import asyncio
 import logging
+import os
 
 import httpx
 
@@ -38,14 +38,14 @@ class Notify:
         except asyncio.TimeoutError:
             self.notify_task.cancel()
 
-
     async def notify_loop(self):
         logging.info("Starting notify loop")
         try:
             while self.run:
-                logging.info("Polling for updates.")
                 async for notification in self.model.get_notifications():
-                    res = await self.send_notification("http://entwatcher:8000/v1/updates", notification.entity)
+                    res = await self.send_notification(
+                        "http://entwatcher:8000/v1/updates", notification.entity
+                    )
 
             self.fut_done.set_result(True)
         except asyncio.CancelledError:

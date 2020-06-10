@@ -22,3 +22,11 @@ async def read_item(entity: str, model=Depends(deps.model), cas=Depends(deps.cas
     if data is None:
         return Response(status_code=404)
     return Response(data, media_type=guess_media_type(data))
+
+
+@router.get("/entity-ptr/{entity}")
+async def read_ptr(entity: str, model=Depends(deps.model)) -> bytes:
+    ptr = await model.get_latest_pointer(entity)
+    if ptr is None:
+        return Response(status_code=404)
+    return Response(ptr)

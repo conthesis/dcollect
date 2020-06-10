@@ -26,7 +26,7 @@ hiredis = "*"
 python_version = "3.8"
 
 [scripts]
-fmt = "nox fmt"
+fmt = "nox -s fmt"
 server = "pipenv run uvicorn --reload dcollect.main:app"
 fmt_black = "black -t py38 -q  ."
 fmt_imports = "isort --multi-line=3 --trailing-comma --force-grid-wrap=0 --use-parentheses --line-width=88 -y -q"

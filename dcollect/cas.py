@@ -1,9 +1,13 @@
 import os
+from typing import Dict
 
-from typing import Any, Dict, Optional
+import httpx
+
 
 class CAS:
-    def __init__(self, http):
+    base_url: str
+    http: httpx.AsyncClient
+    def __init__(self, http: httpx.AsyncClient):
         self.http = http
         self.base_url = os.environ["CAS_URL"]
 

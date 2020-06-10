@@ -12,6 +12,7 @@ os.environ["NO_SUBSCRIBE"] = "1"
 
 client = TestClient(main.app)
 
+
 def rand_entity():
     inst = uuid.uuid4().hex
     return f"/entity/{inst}"
@@ -68,6 +69,7 @@ def test_ingest_changes():
     p2 = read_history["history"][1].get("pointer")
     assert p1 is not None and p2 is not None
     assert p1 != p2, "Pointers should not be the same"
+
 
 def test_healthz():
     res = client.get("/healthz")

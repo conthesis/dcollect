@@ -1,6 +1,6 @@
 import dataclasses
 import os
-from typing import Any, AsyncGenerator, List, Optional, Tuple
+from typing import Any, AsyncGenerator, List, Optional
 
 import orjson
 
@@ -43,12 +43,7 @@ class Model:
 
     async def store_vsn(self, entity: str, pointer: bytes) -> int:
         version = await self.redis.lpush(_vsn_ptr_key(entity), pointer)
-        msg = orjson.dumps(
-            {
-                "entity": entity,
-                "version": version,
-            }
-        )
+        msg = orjson.dumps({"entity": entity, "version": version,})
         await self.redis.rpush(NOTIFY_QUEUE_KEY, msg)
         return version
 
