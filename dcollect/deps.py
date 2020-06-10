@@ -3,14 +3,12 @@ from typing import Optional
 import httpx
 from fastapi import Depends
 
-from dcollect.cas import CAS
 from dcollect.model import Model
 from dcollect.notify import Notify
 
 http_client_: Optional[httpx.AsyncClient] = None
 notify_: Optional[Notify] = None
 model_: Optional[Model] = None
-cas_: Optional[CAS] = None
 
 
 async def model() -> Model:
@@ -34,10 +32,3 @@ async def http_client() -> httpx.AsyncClient:
     if http_client_ is None:
         http_client_ = httpx.AsyncClient()
     return http_client_
-
-
-async def cas(http_client: httpx.AsyncClient = Depends(http_client)) -> CAS:
-    global cas_
-    if cas_ is None:
-        cas_ = CAS(http_client)
-    return cas_
