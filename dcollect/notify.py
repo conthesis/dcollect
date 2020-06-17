@@ -42,10 +42,12 @@ class Notify:
         logging.info("Starting notify loop")
         try:
             while self.run:
+                futures = []
                 async for notification in self.model.get_notifications():
-                    res = await self.send_notification(
+                    futures.append(asyncio.create_task(self.send_notification(
                         "http://entwatcher:8000/v1/updates", notification.entity
-                    )
+                    )))
+                asyncio.gather(*futures)
 
             self.fut_done.set_result(True)
         except asyncio.CancelledError:
