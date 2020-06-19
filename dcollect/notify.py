@@ -19,6 +19,7 @@ class Notify:
     model: Model
     run: bool
     fut_done: asyncio.Future
+    no_subscribe: bool
 
     def __init__(self, http_client: httpx.AsyncClient, model: Model):
         self.model = model
@@ -27,11 +28,12 @@ class Notify:
         self.nc = NATS()
         loop = asyncio.get_event_loop()
         self.fut_done = loop.create_future()
+        self.no_subscribe = os.environ.get("NO_SUBSCRIBE") == "1"
 
     async def setup(self) -> None:
-        if os.environ.get("NO_SUBSCRIBE") == "1":
-            self.fut_done.set_result(True)
+        if self.no_subscribe:
             return
+
         await self.nc.connect("nats://nats:4222")
         await self.nc.subscribe(NOTIFY_UPDATE_ACCEPTED, queue=NOTIFY_UPDATE_ACCEPTED_QUEUE, cb=self.on_accepted)
         self.notify_task = asyncio.create_task(self.notify_loop())
@@ -53,6 +55,8 @@ class Notify:
 
 
     async def notify_loop(self):
+        if self.no_subscribe:
+            return
         logging.info("Starting notify loop")
         try:
             while self.run:
@@ -68,5 +72,7 @@ class Notify:
             return
 
     async def send_notification(self, notification: Notification):
+        if self.no_subscribe:
+            return
         logger.info("Sending notificaition %s", notification)
         await self.nc.publish(NOTIFY_TOPIC, notification.to_bytes())
