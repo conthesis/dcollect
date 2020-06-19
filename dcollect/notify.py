@@ -5,9 +5,11 @@ import os
 
 import httpx
 
-from dcollect.model import Model
+from dcollect.model import Model, Notification
 
 NOTIFY_TOPIC = "entity-updates-v1"
+NOTIFY_UPDATE_ACCEPTED = "entity-updates-v1.accepted"
+NOTIFY_UPDATE_ACCEPTED_QUEUE = "dcollect-entity-updates-v1.accepted"
 
 logger = logging.getLogger("dcollect.notify")
 
@@ -31,6 +33,7 @@ class Notify:
             self.fut_done.set_result(True)
             return
         await self.nc.connect("nats://nats:4222")
+        await self.nc.subscribe(NOTIFY_UPDATE_ACCEPTED, queue=NOTIFY_UPDATE_ACCEPTED_QUEUE, cb=self.on_accepted)
         self.notify_task = asyncio.create_task(self.notify_loop())
         logging.info("Setup done")
 
@@ -42,19 +45,28 @@ class Notify:
         except asyncio.TimeoutError:
             self.notify_task.cancel()
 
+    async def on_accepted(self, msg):
+        try:
+            await self.model.remove_notification(msg.data)
+        except Exception as ex:
+            logger.error(ex)
+
+
     async def notify_loop(self):
         logging.info("Starting notify loop")
         try:
             while self.run:
-                futures = []
-                async for notification in self.model.get_notifications():
-                    futures.append(asyncio.create_task(self.send_notification(notification.entity)))
-                asyncio.gather(*futures)
+                await asyncio.gather(*[self.send_notification(ntf) async for ntf in self.model.get_notifications()])
+                # Ugly... But makes sure we are responsive when terminating
+                for _ in range(5):
+                    await asyncio.sleep(1)
+                    if not self.run:
+                        break
 
             self.fut_done.set_result(True)
         except asyncio.CancelledError:
             return
 
-    async def send_notification(self, entity: str) -> bool:
-        response = await self.nc.request(NOTIFY_TOPIC, entity.encode("utf-8"), timeout=5)
-        return response == b"OK"
+    async def send_notification(self, notification: Notification):
+        logger.info("Sending notificaition %s", notification)
+        await self.nc.publish(NOTIFY_TOPIC, notification.to_bytes())

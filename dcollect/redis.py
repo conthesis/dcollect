@@ -51,6 +51,10 @@ class UnitTestRedis:
     async def llen(self, key: RedisArg) -> int:
         return self.redis.llen(key)
 
+    async def srandmember(self, name, number=1) -> List[bytes]:
+        return self.redis.srandmember(name, number=number)
+
+
 
 class RedisWrap:
     def __init__(self, url: str) -> None:
@@ -95,6 +99,9 @@ class RedisWrap:
         self, key: RedisArg, start: Union[str, int], end: Union[str, int]
     ) -> List[bytes]:
         return await self.redis.zrangebyscore(key, start, end)
+
+    async def srandmember(self, name, number=1) -> List[bytes]:
+        return await self.redis.srandmember(name, number=number)
 
     async def llen(self, key: bytes) -> int:
         return await self.redis.llen(key)

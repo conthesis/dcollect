@@ -19,8 +19,7 @@ def _watch_key(entity: str) -> bytes:
     return b"dcollect_watch:" + entity.encode("utf-8")
 
 
-NOTIFY_QUEUE_KEY = "dcollect_notify"
-NOTIFY_QUEUE_TIMEOUT = 5
+NOTIFY_SET_KEY = "dcollect_notify"
 
 
 @dataclasses.dataclass
@@ -30,8 +29,17 @@ class Notification:
 
     @classmethod
     def from_bytes(cls, x: bytes) -> "Notification":
-        data = orjson.loads(x)
-        return cls(**data)
+        fields = x.split(b"\0")
+        if len(fields) != 2:
+            raise RuntimeError("invalid format")
+
+        entity = fields[0].decode("utf-8")
+        version = int(fields[1].decode("utf-8"))
+        return cls(entity=entity, version=version)
+
+    def to_bytes(self) -> bytes:
+        return self.entity.encode("utf-8") + b"\0" + str(self.version).encode("utf-8")
+
 
 
 class Model:
@@ -43,21 +51,13 @@ class Model:
 
     async def store_vsn(self, entity: str, pointer: bytes) -> int:
         version = await self.redis.lpush(_vsn_ptr_key(entity), pointer)
-        msg = orjson.dumps({"entity": entity, "version": version,})
-        await self.redis.rpush(NOTIFY_QUEUE_KEY, msg)
+        await self.redis.sadd(NOTIFY_SET_KEY, Notification(entity=entity, version=version).to_bytes())
         return version
 
     async def get_notifications(self) -> AsyncGenerator[Notification, Any]:
-        current = None
-        while True:
-            current = await self.redis.lpop(NOTIFY_QUEUE_KEY)
-            if current is not None:
-                yield Notification.from_bytes(current)
-            else:
-                break
-        res = await self.redis.blpop([NOTIFY_QUEUE_KEY], 5)
-        if res:
-            yield Notification.from_bytes(res[1])
+        ents = await self.redis.srandmember(NOTIFY_SET_KEY, 10)
+        for e in ents:
+            yield Notification.from_bytes(e)
 
     async def get_latest_pointer(self, entity: str) -> Optional[bytes]:
         res = await self.redis.lrange(_vsn_ptr_key(entity), 0, 0)
@@ -65,6 +65,9 @@ class Model:
             return None
         else:
             return res[0]
+
+    async def remove_notification(self, notification_data: bytes) -> bool:
+        return await self.redis.srem(NOTIFY_SET_KEY, notification_data) == 1
 
     async def get_history(self, entity: str) -> List[bytes]:
         pointers = await self.redis.lrange(_vsn_ptr_key(entity), 0, 100)
