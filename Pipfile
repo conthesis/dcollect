@@ -28,11 +28,8 @@ python_version = "3.8"
 [scripts]
 fmt = "nox -s fmt"
 server = "pipenv run uvicorn --reload dcollect.main:app"
-fmt_black = "black -t py38 -q  ."
-fmt_imports = "isort --multi-line=3 --trailing-comma --force-grid-wrap=0 --use-parentheses --line-width=88 -y -q"
 typecheck = "mypy dcollect"
 test = "python -m pytest"
-fix_flake = "autoflake -r -i ."
 
 [pipenv]
 allow_prereleases = true
