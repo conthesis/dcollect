@@ -1,9 +1,9 @@
 import asyncio
-from nats.aio.client import Client as NATS
 import logging
 import os
 
 import httpx
+from nats.aio.client import Client as NATS
 
 from dcollect.model import Model, Notification
 
@@ -35,7 +35,11 @@ class Notify:
             return
 
         await self.nc.connect("nats://nats:4222")
-        await self.nc.subscribe(NOTIFY_UPDATE_ACCEPTED, queue=NOTIFY_UPDATE_ACCEPTED_QUEUE, cb=self.on_accepted)
+        await self.nc.subscribe(
+            NOTIFY_UPDATE_ACCEPTED,
+            queue=NOTIFY_UPDATE_ACCEPTED_QUEUE,
+            cb=self.on_accepted,
+        )
         self.notify_task = asyncio.create_task(self.notify_loop())
         logging.info("Setup done")
 
@@ -53,14 +57,18 @@ class Notify:
         except Exception as ex:
             logger.error(ex)
 
-
     async def notify_loop(self):
         if self.no_subscribe:
             return
         logging.info("Starting notify loop")
         try:
             while self.run:
-                await asyncio.gather(*[self.send_notification(ntf) async for ntf in self.model.get_notifications()])
+                await asyncio.gather(
+                    *[
+                        self.send_notification(ntf)
+                        async for ntf in self.model.get_notifications()
+                    ]
+                )
                 # Ugly... But makes sure we are responsive when terminating
                 for _ in range(5):
                     await asyncio.sleep(1)

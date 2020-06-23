@@ -1,7 +1,6 @@
 from typing import Optional
 
 import httpx
-from fastapi import Depends
 
 from dcollect.model import Model
 from dcollect.notify import Notify

@@ -1,10 +1,8 @@
 import os
 import uuid
 
-import pytest
 from fastapi.testclient import TestClient
 
-import dcollect.hooks as hooks
 import dcollect.main as main
 
 os.environ["REDIS_URL"] = "__unittest__"

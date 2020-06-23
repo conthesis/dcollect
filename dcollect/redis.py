@@ -55,7 +55,6 @@ class UnitTestRedis:
         return self.redis.srandmember(name, number=number)
 
 
-
 class RedisWrap:
     def __init__(self, url: str) -> None:
         from aredis import StrictRedis  # type: ignore

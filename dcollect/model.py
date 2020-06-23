@@ -2,7 +2,6 @@ import dataclasses
 import os
 from typing import Any, AsyncGenerator, List, Optional
 
-import orjson
 
 import dcollect.redis as redis
 
@@ -41,7 +40,6 @@ class Notification:
         return self.entity.encode("utf-8") + b"\0" + str(self.version).encode("utf-8")
 
 
-
 class Model:
     def __init__(self):
         self.redis = redis.from_url(os.environ["REDIS_URL"])
@@ -51,7 +49,9 @@ class Model:
 
     async def store_vsn(self, entity: str, pointer: bytes) -> int:
         version = await self.redis.lpush(_vsn_ptr_key(entity), pointer)
-        await self.redis.sadd(NOTIFY_SET_KEY, Notification(entity=entity, version=version).to_bytes())
+        await self.redis.sadd(
+            NOTIFY_SET_KEY, Notification(entity=entity, version=version).to_bytes()
+        )
         return version
 
     async def get_notifications(self) -> AsyncGenerator[Notification, Any]:
