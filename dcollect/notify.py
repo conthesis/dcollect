@@ -2,7 +2,6 @@ import asyncio
 import logging
 import os
 
-import httpx
 from nats.aio.client import Client as NATS
 
 from dcollect.model import Model, Notification
@@ -21,20 +20,18 @@ class Notify:
     fut_done: asyncio.Future
     no_subscribe: bool
 
-    def __init__(self, http_client: httpx.AsyncClient, model: Model):
+    def __init__(self, model: Model, nc: NATS):
+        self.notify_task = None
+        self.nc = nc
         self.model = model
-        self.http_client = http_client
         self.run = True
-        self.nc = NATS()
-        loop = asyncio.get_event_loop()
-        self.fut_done = loop.create_future()
+        self.fut_done = asyncio.get_running_loop().create_future()
         self.no_subscribe = os.environ.get("NO_SUBSCRIBE") == "1"
 
     async def setup(self) -> None:
         if self.no_subscribe:
             return
 
-        await self.nc.connect("nats://nats:4222")
         await self.nc.subscribe(
             NOTIFY_UPDATE_ACCEPTED,
             queue=NOTIFY_UPDATE_ACCEPTED_QUEUE,
@@ -46,10 +43,10 @@ class Notify:
     async def shutdown(self):
         self.run = False
         try:
-            await self.nc.drain()
             await asyncio.wait_for(self.fut_done, timeout=7.0)
         except asyncio.TimeoutError:
-            self.notify_task.cancel()
+            if self.notify_task is not None:
+                self.notify_task.cancel()
 
     async def on_accepted(self, msg):
         try:

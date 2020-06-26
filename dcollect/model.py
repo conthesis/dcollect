@@ -2,7 +2,6 @@ import dataclasses
 import os
 from typing import Any, AsyncGenerator, List, Optional
 
-
 import dcollect.redis as redis
 
 
@@ -44,8 +43,8 @@ class Model:
     def __init__(self):
         self.redis = redis.from_url(os.environ["REDIS_URL"])
 
-    async def teardown(self):
-        self.disconnect()
+    async def shutdown(self):
+        pass
 
     async def store_vsn(self, entity: str, pointer: bytes) -> int:
         version = await self.redis.lpush(_vsn_ptr_key(entity), pointer)

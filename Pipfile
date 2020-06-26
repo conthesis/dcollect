@@ -14,10 +14,7 @@ fakeredis = "*"
 nox = "*"
 
 [packages]
-fastapi = "*"
-uvicorn = "*"
 orjson = "*"
-httpx = "*"
 aredis = "*"
 hiredis = "*"
 asyncio-nats-client = "*"
