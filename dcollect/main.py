@@ -74,6 +74,8 @@ class DCollect:
                 return
             entity = data[:nl].decode("utf-8")
             data = data[nl + 1 :]
+            if len(data) > 64:
+                await self.reply(msg, b"ERR")
             vsn = await self.service.store(entity, data)
             await self.reply(msg, b"OK " + str(vsn).encode("utf-8"))
         except:
