@@ -1,7 +1,15 @@
-FROM python:3.8
-RUN pip3 install pipenv
-COPY Pipfile Pipfile.lock /app/
+# build stage
+FROM golang:alpine as builder
+
+ENV GO111MODULE=on
 WORKDIR /app
-RUN pipenv install --three --deploy --ignore-pipfile
-COPY dcollect /app/dcollect
-CMD ["pipenv", "run", "python", "-u", "-m", "dcollect"]
+
+COPY go.mod go.sum /app/
+RUN go mod download
+COPY *.go /app/
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
+
+# final stage
+FROM scratch
+COPY --from=builder /app/vsn /app/
+ENTRYPOINT ["/app/vsn"]
