@@ -1,12 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"github.com/go-redis/redis/v8"
 	"log"
 	"math/rand"
-	"bytes"
 )
 
 // Storage is an interface common for storage engines
@@ -69,11 +69,18 @@ func (r *RedisStorage) Store(ctx context.Context, key []byte, data []byte) (stri
 }
 
 func (r *RedisStorage) removeNotify(ctx context.Context, data []byte) error {
-	return r.client.SRem(ctx, notifySetKey, data).Err()
+	n, err := r.client.SRem(ctx, notifySetKey, data).Result()
+	if err != nil {
+		return err
+	}
+	if n < 1 {
+		return errors.New("Not properly removed")
+	}
+	return nil
 }
 
 func (r *RedisStorage) getNotifys(ctx context.Context) ([]string, error) {
-	return r.client.SRandMemberN(ctx, notifySetKey, 10).Result()
+	return r.client.SRandMemberN(ctx, notifySetKey, 35).Result()
 }
 
 func (r *RedisStorage) Close() {

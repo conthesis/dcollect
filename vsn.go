@@ -1,23 +1,22 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	nats "github.com/nats-io/nats.go"
 	"log"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
-	"net/url"
-	"bytes"
 	"time"
-	"fmt"
 )
 
 const vsnGetTopic = "conthesis.dcollect.get"
 const vsnStoreTopic = "conthesis.dcollect.store"
 const notifyTopic = "entity-updates-v1"
 const notifyAcceptedTopic = "entity-updates-v1.accepted"
-
 
 func getRequiredEnv(env string) string {
 	val := os.Getenv(env)
@@ -57,7 +56,7 @@ func setupVSN() *vsn {
 type vsn struct {
 	nc      *nats.Conn
 	storage Storage
-	done chan bool
+	done    chan bool
 }
 
 // URLs on the internet are generally fewer than 2048 charactrs. With 4096 we can store maxed out URLs
@@ -140,14 +139,19 @@ func (v *vsn) watcherRound() {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 	ns, err := v.storage.getNotifys(ctx)
-	if (err != nil) {
-		log.Printf("Error while fetching pending notifications %s", err)
+	if err != nil {
+		log.Printf("Error while fetching pending notifications: %s", err)
 		return
 	}
-	for _, x := range(ns) {
-		v.nc.Publish(notifyTopic, []byte(x))
+	for _, x := range ns {
+		err := v.nc.Publish(notifyTopic, []byte(x))
+		if err != nil {
+			log.Printf("Error while retrying pending notification: %s", err)
+		}
 	}
-
+	if n := len(ns); n > 0 {
+		log.Printf("Sent %d notifications", n)
+	}
 }
 func (v *vsn) watcherLoop() {
 	ticker := time.NewTicker(5 * time.Second)
