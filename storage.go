@@ -7,6 +7,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"log"
 	"math/rand"
+	"encoding/base64"
 )
 
 // Storage is an interface common for storage engines
@@ -36,7 +37,7 @@ func notifySetEntry(key []byte) string {
 	// cannot return err
 	rand.Read(randBuf)
 	bfr.WriteString("\000")
-	bfr.Write(randBuf)
+	bfr.WriteString(base64.StdEncoding.EncodeToString(randBuf))
 	return bfr.String()
 
 }
