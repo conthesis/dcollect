@@ -8,9 +8,8 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
+	"go.uber.org/fx"
 )
 
 const vsnGetTopic = "conthesis.dcollect.get"
@@ -18,38 +17,38 @@ const vsnStoreTopic = "conthesis.dcollect.store"
 const notifyTopic = "entity-updates-v1"
 const notifyAcceptedTopic = "entity-updates-v1.accepted"
 
-func getRequiredEnv(env string) string {
+func getRequiredEnv(env string) (string, error) {
 	val := os.Getenv(env)
 	if val == "" {
-		log.Fatalf("`%s`, a required environment variable was not set", env)
+		return "", fmt.Errorf("`%s`, a required environment variable was not set", env)
 	}
-	return val
+	return val, nil
 }
 
-func connectNats() *nats.Conn {
-	natsURL := getRequiredEnv("NATS_URL")
+func NewNats(lc fx.Lifecycle) (*nats.Conn, error) {
+	natsURL, err := getRequiredEnv("NATS_URL")
+	if err != nil {
+		return nil, err
+	}
 	nc, err := nats.Connect(natsURL)
 
 	if err != nil {
 		if err, ok := err.(*url.Error); ok {
-			log.Fatalf("NATS_URL is of an incorrect format: %s", err.Error())
+			return nil, fmt.Errorf("NATS_URL is of an incorrect format: %w", err)
 		}
-		log.Fatalf("Failed to connect to NATS %T: %s", err, err)
+		return nil, err
 	}
-	return nc
+
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			return nc.Drain()
+		},
+	})
+
+	return nc, nil
 }
 
-func setupStorage() Storage {
-	storage, err := newStorage()
-	if err != nil {
-		log.Fatalf("Error setting up storage %s", err)
-	}
-	return storage
-}
-
-func setupVSN() *vsn {
-	nc := connectNats()
-	storage := setupStorage()
+func NewVSN(nc *nats.Conn, storage Storage) *vsn {
 	return &vsn{nc: nc, storage: storage}
 }
 
@@ -108,31 +107,21 @@ func (v *vsn) acceptedHandler(m *nats.Msg) {
 	}
 }
 
-func waitForTerm() {
-	sigs := make(chan os.Signal, 1)
-	done := make(chan bool, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-sigs
-		done <- true
-	}()
-	<-done
-}
-
-func (v *vsn) setupSubscriptions() {
+func setupSubscriptions(v *vsn) error {
 	_, err := v.nc.Subscribe(vsnStoreTopic, v.storeHandler)
 	if err != nil {
-		log.Fatalf("Unable to subscribe to topic %s: %s", vsnGetTopic, err)
+		return err
 	}
 	_, err = v.nc.Subscribe(vsnGetTopic, v.getHandler)
 	if err != nil {
-		log.Fatalf("Unable to subscribe to topic %s: %s", vsnStoreTopic, err)
+		return err
 	}
 
 	_, err = v.nc.Subscribe(notifyAcceptedTopic, v.acceptedHandler)
 	if err != nil {
-		log.Fatalf("Unable to subscribe to topic %s: %s", vsnStoreTopic, err)
+		return err
 	}
+	return nil
 }
 
 func (v *vsn) watcherRound() {
@@ -153,7 +142,7 @@ func (v *vsn) watcherRound() {
 		log.Printf("Sent %d notifications", n)
 	}
 }
-func (v *vsn) watcherLoop() {
+func watcherLoop(v *vsn) {
 	ticker := time.NewTicker(5 * time.Second)
 	for {
 		select {
@@ -165,18 +154,27 @@ func (v *vsn) watcherLoop() {
 	}
 }
 
-func (v *vsn) Close() {
-	v.done <- true
-	log.Printf("Shutting down...")
-	v.nc.Drain()
-	v.storage.Close()
+func setupWatcherLoop(lc fx.Lifecycle, v *vsn) {
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			go watcherLoop(v)
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			v.done<- true
+			return nil
+		},
+	})
 }
 
 func main() {
-	vsn := setupVSN()
-	defer vsn.Close()
-	vsn.setupSubscriptions()
-	go vsn.watcherLoop()
-	log.Printf("Connected to NATS")
-	waitForTerm()
+	fx.New(
+		fx.Provide(
+			NewNats,
+			NewStorage,
+			NewVSN,
+		),
+		fx.Invoke(setupSubscriptions),
+		fx.Invoke(setupWatcherLoop),
+	).Run()
 }
