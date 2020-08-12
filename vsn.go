@@ -103,7 +103,7 @@ func (v *vsn) acceptedHandler(m *nats.Msg) {
 	defer cancel()
 	err := v.storage.removeNotify(ctx, m.Data)
 	if err != nil {
-		log.Printf("Error removing notify entry: %s", err)
+		log.Printf("Error removing notify entry: %s, was %v", err, string(m.Data))
 	}
 }
 
