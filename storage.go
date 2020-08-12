@@ -10,6 +10,8 @@ import (
 	"go.uber.org/fx"
 )
 
+const RoundSize = 10
+
 // Storage is an interface common for storage engines
 type Storage interface {
 	// Gets the current hash for the key
@@ -39,7 +41,6 @@ func notifySetEntry(key []byte) string {
 	bfr.WriteString("\000")
 	bfr.WriteString(base64.StdEncoding.EncodeToString(randBuf))
 	return bfr.String()
-
 }
 
 const notifySetKey = "vsn_notify"
@@ -81,7 +82,7 @@ func (r *RedisStorage) removeNotify(ctx context.Context, data []byte) error {
 }
 
 func (r *RedisStorage) getNotifys(ctx context.Context) ([]string, error) {
-	return r.client.SRandMemberN(ctx, notifySetKey, 35).Result()
+	return r.client.SRandMemberN(ctx, notifySetKey, RoundSize).Result()
 }
 
 func (r *RedisStorage) Close(ctx context.Context) error {
