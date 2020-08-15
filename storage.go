@@ -7,6 +7,8 @@ import (
 	"github.com/go-redis/redis/v8"
 	"math/rand"
 	"encoding/base64"
+	"strings"
+
 	"go.uber.org/fx"
 )
 
@@ -18,6 +20,7 @@ type Storage interface {
 	Get(context.Context, []byte) ([]byte, error)
 	// Store stores the passed in pointer at that key
 	Store(context.Context, []byte, []byte) (string, error)
+	List(context.Context, []byte) ([]string, error)
 	removeNotify(context.Context, []byte) error
 	getNotifys(context.Context) ([]string, error)
 	Close(context.Context) error
@@ -28,9 +31,10 @@ type RedisStorage struct {
 	client *redis.Client
 }
 
+const KEY_PREFIX = "vsn:"
+
 func vsnKey(key []byte) string {
-	prefix := "vsn:"
-	return prefix + string(key)
+	return KEY_PREFIX + string(key)
 }
 
 func notifySetEntry(key []byte) string {
@@ -83,6 +87,19 @@ func (r *RedisStorage) removeNotify(ctx context.Context, data []byte) error {
 
 func (r *RedisStorage) getNotifys(ctx context.Context) ([]string, error) {
 	return r.client.SRandMemberN(ctx, notifySetKey, RoundSize).Result()
+}
+
+func (r *RedisStorage) List(ctx context.Context, path []byte) ([]string, error) {
+	res := r.client.Keys(ctx, vsnKey(path) + "*")
+	if err := res.Err(); err != nil {
+		return nil, err
+	}
+	rawData := res.Val()
+	buf := make([]string, 0, len(rawData))
+	for _, v := range rawData {
+		buf = append(buf, strings.TrimPrefix(v, KEY_PREFIX))
+	}
+	return buf, nil
 }
 
 func (r *RedisStorage) Close(ctx context.Context) error {

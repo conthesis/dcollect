@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	nats "github.com/nats-io/nats.go"
 	"log"
@@ -12,8 +13,11 @@ import (
 	"go.uber.org/fx"
 )
 
-const vsnGetTopic = "conthesis.dcollect.get"
-const vsnStoreTopic = "conthesis.dcollect.store"
+const base = "conthesis.dcollect."
+const vsnGetTopic = base + "get"
+const vsnStoreTopic = base + "store"
+const listTopic = base + "list"
+
 const notifyTopic = "entity-updates-v1"
 const notifyAcceptedTopic = "entity-updates-v1.accepted"
 
@@ -107,19 +111,50 @@ func (v *vsn) acceptedHandler(m *nats.Msg) {
 	}
 }
 
-func setupSubscriptions(v *vsn) error {
-	_, err := v.nc.Subscribe(vsnStoreTopic, v.storeHandler)
+
+type ListResponse struct {
+	Success bool `json:"success"`
+	Status string `json:"status,omitempty"`
+	Contents []string `json:"contents,omitempty"`
+}
+
+func respondWithList(m *nats.Msg, response ListResponse) error {
+	data, err := json.Marshal(response)
 	if err != nil {
 		return err
 	}
-	_, err = v.nc.Subscribe(vsnGetTopic, v.getHandler)
+	return m.Respond(data)
+}
+
+func (v *vsn) listHandler(m *nats.Msg) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	res, err := v.storage.List(ctx, m.Data)
+
 	if err != nil {
-		return err
+		resp := ListResponse{Success: false, Status: "INTERNAL_ERROR"}
+		if err := respondWithList(m, resp); err != nil {
+			log.Printf("Unable to respond %v", err)
+		}
 	}
 
-	_, err = v.nc.Subscribe(notifyAcceptedTopic, v.acceptedHandler)
-	if err != nil {
-		return err
+	resp := ListResponse{Success: true, Contents: res}
+	if err := respondWithList(m, resp); err != nil {
+		log.Printf("Unable to respond %v", err)
+	}
+}
+
+func setupSubscriptions(v *vsn) error {
+	x := map[string]nats.MsgHandler{
+		vsnStoreTopic: v.storeHandler,
+		vsnGetTopic: v.getHandler,
+		notifyAcceptedTopic: v.acceptedHandler,
+		listTopic: v.listHandler,
+	}
+	for subj, handler := range x {
+		if _, err := v.nc.Subscribe(subj, handler); err != nil {
+			return err
+		}
 	}
 	return nil
 }
