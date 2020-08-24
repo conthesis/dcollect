@@ -3,11 +3,12 @@ package main
 import (
 	"bytes"
 	"context"
-	"errors"
-	"github.com/go-redis/redis/v8"
-	"math/rand"
 	"encoding/base64"
+	"errors"
+	"math/rand"
 	"strings"
+
+	"github.com/go-redis/redis/v8"
 
 	"go.uber.org/fx"
 )
@@ -29,6 +30,7 @@ type Storage interface {
 // RedisStorage is storage engine storing things to Redis
 type RedisStorage struct {
 	client *redis.Client
+	storeScript *redis.Script
 }
 
 const KEY_PREFIX = "vsn:"
@@ -62,14 +64,30 @@ func (r *RedisStorage) Get(ctx context.Context, key []byte) ([]byte, error) {
 	}
 }
 
+
+var RedisStoreScript = redis.NewScript(`
+local data = redis.call('lrange', KEYS[1], 0, 0)
+if data[1] ~= ARGV[1] then
+   redis.call('lpush', KEYS[1], ARGV[1])
+   redis.call('sadd', KEYS[2], ARGV[2])
+   return "1"
+end
+return "0"
+`)
+
 func (r *RedisStorage) Store(ctx context.Context, key []byte, data []byte) (string, error) {
-	pipe := r.client.TxPipeline()
-	pipe.LPush(ctx, string(vsnKey(key)), data)
 	setEntry := notifySetEntry(key)
-	sadd := pipe.SAdd(ctx, notifySetKey, setEntry)
-	pipe.Exec(ctx)
-	if err := sadd.Err(); err != nil {
+	res, err := RedisStoreScript.Run(
+		ctx,
+		r.client,
+		[]string{vsnKey(key), notifySetKey},
+		data, setEntry).Result()
+
+	if err != nil {
 		return "", err
+	}
+	if res == "0" {
+		return "", nil
 	}
 	return setEntry, nil
 }

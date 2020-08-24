@@ -97,8 +97,11 @@ func (v *vsn) storeHandler(m *nats.Msg) {
 	if err != nil {
 		log.Printf("Error storing key: %+q, err: %s", key, err)
 		m.Respond([]byte("ERR"))
+		return
 	}
-	v.nc.Publish(notifyTopic, []byte(notify))
+	if notify != "" {
+		v.nc.Publish(notifyTopic, []byte(notify))
+	}
 	m.Respond([]byte(fmt.Sprintf("OK %+q", notify)))
 }
 
@@ -111,11 +114,33 @@ func (v *vsn) acceptedHandler(m *nats.Msg) {
 	}
 }
 
+type EntryType string
+const (
+	File EntryType = "File"
+	Directory = "Directory"
+)
+
+type ListFilesEntry struct {
+	Name string `json:"name"`
+	Type EntryType `json:"type"`
+}
 
 type ListResponse struct {
 	Success bool `json:"success"`
 	Status string `json:"status,omitempty"`
-	Contents []string `json:"contents,omitempty"`
+	Contents []ListFilesEntry `json:"contents,omitempty"`
+}
+
+
+func namesToEntries(names []string) []ListFilesEntry {
+	res := make([]ListFilesEntry, 0, len(names))
+	for _, name := range names {
+		res = append(res, ListFilesEntry{
+			Name: name,
+			Type: File,
+		})
+	}
+	return res
 }
 
 func respondWithList(m *nats.Msg, response ListResponse) error {
@@ -138,7 +163,7 @@ func (v *vsn) listHandler(m *nats.Msg) {
 		}
 	}
 
-	resp := ListResponse{Success: true, Contents: res}
+	resp := ListResponse{Success: true, Contents: namesToEntries(res)}
 	if err := respondWithList(m, resp); err != nil {
 		log.Printf("Unable to respond %v", err)
 	}
